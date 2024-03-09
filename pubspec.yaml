@@ -1,0 +1,35 @@
+name: untitled3
+description: A new Flutter project.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk:  '>=3.0.5 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^0.13.3
+  cupertino_icons: ^1.0.2
+  curved_navigation_bar: ^1.0.3
+  provider: ^6.1.1
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+    - assets/icons/
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: fonts/Inter-Medium.ttf
+    - family: Poppins
+      fonts:
+        - asset: fonts/Poppins.ttf
