@@ -213,6 +213,7 @@ class RegScreen extends StatelessWidget {
                         color: Color(0xFF199A8E),
                         fontWeight: FontWeight.bold,
                       ),
+
                     ),
                   ],
                 ),
