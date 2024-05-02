@@ -73,7 +73,7 @@ class _MedicalFolderScreenState extends State<MedicalFolderScreen> {
     // Validate and submit medical folder information
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.6:3000/api/medical-folder'), // Adjust the URL as needed
+        Uri.parse('http://192.168.1.8:3000/api/medical-folder'),
         headers: {
           'Content-Type': 'application/json',
         },

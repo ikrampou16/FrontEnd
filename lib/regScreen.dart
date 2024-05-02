@@ -18,6 +18,8 @@ class RegScreen extends StatelessWidget {
   final TextEditingController diabeteController = TextEditingController();
   final TextEditingController diabHisController = TextEditingController();
   final TextEditingController dkaHisController = TextEditingController();
+  final TextEditingController birthController = TextEditingController();
+
 
 
 
@@ -25,6 +27,7 @@ class RegScreen extends StatelessWidget {
   String errorMessage = '';
 
   Future<void> registerPatient(BuildContext context) async {
+    print('Registering patient...');
     // Check for empty fields
     if (firstNameController.text.isEmpty ||
         lastNameController.text.isEmpty ||
@@ -39,6 +42,7 @@ class RegScreen extends StatelessWidget {
           duration: Duration(seconds: 3),
         ),
       );
+      print('Registration failed: Empty fields');
       return;
     }
 
@@ -51,13 +55,14 @@ class RegScreen extends StatelessWidget {
           duration: Duration(seconds: 3),
         ),
       );
+      print('Registration failed: Passwords do not match');
       return;
     }
 
     // Proceed with registration
     try {
       final responsePatient = await http.post(
-        Uri.parse('http://192.168.89.226:3000/api/patient'),
+        Uri.parse('http://192.168.1.3:3000/api/patient'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -72,10 +77,8 @@ class RegScreen extends StatelessWidget {
       );
 
       if (responsePatient.statusCode == 200) {
-        // Patient registration successful, proceed with medical folder registration
         await registerMedicalFolder(context, jsonDecode(responsePatient.body)['id']);
       } else {
-        // Handle patient registration failure
         print('Patient registration failed: ${responsePatient.statusCode} - ${responsePatient.body}');
         errorMessage = 'Patient registration failed. Please try again.';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -96,8 +99,6 @@ class RegScreen extends StatelessWidget {
         ),
       );
     }
-
-    // Show success dialog regardless of patient registration status
     showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -121,10 +122,11 @@ class RegScreen extends StatelessWidget {
         }
     );
   }
+
   Future<void> registerMedicalFolder(BuildContext context, int patientId) async {
     try {
       final responseMedicalFolder = await http.post(
-        Uri.parse('http://192.168.89.226:3000/api/medicalfolder/$patientId'),
+        Uri.parse('http://192.168.1.3:3000/api/medicalfolder/$patientId'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -133,7 +135,7 @@ class RegScreen extends StatelessWidget {
           'diabetes_history': diabHisController.text,
           'dka_history': dkaHisController.text,
           'address': adressController.text,
-          'age': ageController.text,
+          'date_of_birth': birthController.text,
           'gender': genderController.text,
           'weight': weightController.text,
           'height': heightController.text,
@@ -171,7 +173,7 @@ class RegScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              height: 200,
+              height: 195,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -181,7 +183,7 @@ class RegScreen extends StatelessWidget {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.only(top: 60),
+                padding: const EdgeInsets.only(top: 55),
                 child: Column(
                   children: [
                     Text(
@@ -210,7 +212,7 @@ class RegScreen extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 23,
-                        color: Color(0xFF199A8E),
+                        color: Colors.black,
                         fontWeight: FontWeight.bold,
                       ),
 
@@ -347,10 +349,10 @@ class RegScreen extends StatelessWidget {
                             ),
                                ),
                          TextField(
-                          controller: ageController,
+                          controller: birthController,
                           decoration: InputDecoration(
                             prefixIcon: Icon(Icons.person_outline, color: Color(0xFF199A8E)),
-                            labelText: 'Age',
+                            labelText: 'Date Of Birth',
                             labelStyle: TextStyle(
                            fontFamily: 'Poppins',
                              color: Colors.black,

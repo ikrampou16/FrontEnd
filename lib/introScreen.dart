@@ -1,4 +1,5 @@
 // IntroScreen.dart
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:untitled3/WelcomeScreen.dart';
 
@@ -6,13 +7,13 @@ class introScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     body: Container(
-    width: double.infinity,
-    height: double.infinity,
-    decoration: BoxDecoration(
-    gradient: LinearGradient(
-    colors: [Colors.white, Color(0xFFB0EFE9)],
-    begin: Alignment.topCenter,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Color(0xFFB0EFE9)],
+            begin: Alignment.topCenter,
             end: Alignment.center,
           ),
         ),
@@ -21,19 +22,20 @@ class introScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(height: 90),
-            Text(
-              'App Name!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF199A8E),
+            Container(
+              width: 140.0,
+              height: 120.0,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30.0),
+                image: DecorationImage(
+                  image: AssetImage('assets/logomob.png'),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-            SizedBox(height: 70),
+            SizedBox(height: 40),
             Text(
-              'Striving to enhance \n community healthcare  and advance \n surveillance technologies!',
+              'Striving to enhance\ncommunity healthcare and advance\nsurveillance technologies!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Poppins',
@@ -42,40 +44,33 @@ class introScreen extends StatelessWidget {
                 color: Colors.black,
               ),
             ),
-            SizedBox(height: 70),
-            Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
-                    spreadRadius: 5,
-                    blurRadius: 7,
-                    offset: Offset(0, 2), // Adjust the offset for a bottom drop shadow
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
-                onPressed: () {
-                  // Navigate to the WelcomeScreen after the introduction
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => WelcomeScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+            SizedBox(height: 55),
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to the WelcomeScreen after the introduction
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => WelcomeScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
                 ),
-                child: Icon(Icons.arrow_forward, size: 30, color: Color(0xFFB0EFE9)),
+                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                elevation: 5, // Add elevation for a more prominent button
+              ),
+              child: Icon(
+                Icons.arrow_forward,
+                size: 30,
+                color: Color(0xFFB0EFE9),
               ),
             ),
             SizedBox(height: 50),
             Expanded(
-              child: Image(
-                image: AssetImage('assets/intro.jpg'),
+              child: Image.asset(
+                'assets/intro.jpg',
                 fit: BoxFit.cover,
               ),
             ),
