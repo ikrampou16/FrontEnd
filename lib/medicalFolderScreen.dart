@@ -14,8 +14,6 @@ class _MedicalFolderScreenState extends State<MedicalFolderScreen> {
   final TextEditingController diabetesHistoryController = TextEditingController();
   final TextEditingController dkaHistoryController = TextEditingController();
 
-  // Add a variable to store the patient ID
-  // You should obtain and set this ID when the personal information is registered
   String? patientId;
 
   @override
@@ -60,17 +58,12 @@ class _MedicalFolderScreenState extends State<MedicalFolderScreen> {
     );
   }
 
-  // Function to submit both personal and medical information
   Future<void> submitMedicalFolderInformation(BuildContext context) async {
-    // Check if the patient ID is available
     if (patientId == null) {
-      // Handle the case where the patient ID is not available
       print('Patient ID is not available. Please register personal information first.');
-      // You might want to show an error message to the user or handle it accordingly
       return;
     }
 
-    // Validate and submit medical folder information
     try {
       final response = await http.post(
         Uri.parse('http://192.168.1.8:3000/api/medical-folder'),
@@ -81,28 +74,21 @@ class _MedicalFolderScreenState extends State<MedicalFolderScreen> {
           'diabetes_type': diabetesTypeController.text,
           'diabetes_history': diabetesHistoryController.text,
           'dka_history': dkaHistoryController.text,
-          'id_patient': patientId, // Use the patient ID obtained from the first registration
+          'id_patient': patientId,
         }),
       );
 
       if (response.statusCode == 200) {
-        // Medical folder information submitted successfully
         print('Medical folder information submitted successfully: ${response.body}');
 
-        // Display a success dialog or navigate to the next screen
-        // ...
       } else {
-        // Medical folder information submission failed
-        // Display an error message
-        print('Medical folder information submission failed: ${response.statusCode} - ${response.body}');
-        // Display an error message or handle accordingly
-        // ...
+        print('Medical folder information submission failed: ${response
+            .statusCode} - ${response.body}');
       }
     } catch (error) {
       // Handle network or other errors
       print('Error during medical folder information submission: $error');
-      // Display an error message or handle accordingly
-      // ...
+
     }
   }
 }

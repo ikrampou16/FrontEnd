@@ -31,6 +31,8 @@ class _MedicalFolderRegistrationScreenState
   bool showDKHFields = false;
   String errorMessage = '';
   String? dkaOrderValue;
+  String? smokeValue = 'No';
+  String? selectedArea;
   List<Map<String, dynamic>> doctorsList = [];
   List<Map<String, dynamic>> savedDkaHistoryList = [];
 
@@ -82,7 +84,7 @@ class _MedicalFolderRegistrationScreenState
       }
       if (widget.patientId == null) {
         print('Error: Invalid patient ID');
-        showErrorSnackBar('Invalid patient ID. Please try again.');
+        _showErrorSnackBar('Invalid patient ID. Please try again.');
         return;
       }
       int? idFolder;
@@ -102,7 +104,7 @@ class _MedicalFolderRegistrationScreenState
         );
         if (responseCreateDoctor.statusCode != 200) {
           print('Doctor creation failed: ${responseCreateDoctor.statusCode} - ${responseCreateDoctor.body}');
-          showErrorSnackBar('Doctor creation failed. Please try again.');
+          _showErrorSnackBar('Doctor creation failed. Please try again.');
           return;
         }
 
@@ -120,35 +122,49 @@ class _MedicalFolderRegistrationScreenState
             'diabetes_history': diabHisController.text.isNotEmpty ? diabHisController.text : null,
             'weight': weightController.text.isNotEmpty ? weightController.text : null,
             'height': heightController.text.isNotEmpty ? heightController.text : null,
+            'is_smoke': smokeValue ?? false,
+            'area': selectedArea ?? '',
             'id_doctor': selectedDoctorId,
           }),
         );
         if (responseMedicalFolderWithNewDoctor.statusCode != 200) {
           print('Medical folder registration failed with the new doctor: ${responseMedicalFolderWithNewDoctor.statusCode} - ${responseMedicalFolderWithNewDoctor.body}');
-          showErrorSnackBar('Medical folder registration failed with the new doctor. Please try again.');
+          _showErrorSnackBar('Medical folder registration failed with the new doctor. Please try again.');
           return;
         }
 
         final dynamic decodedResponse = json.decode(responseMedicalFolderWithNewDoctor.body);
         idFolder = decodedResponse['id_folder'] as int?;
       } else {
+        print(jsonEncode({
+          'diabetes_type': diabeteController.text.isNotEmpty ? diabeteController.text : null,
+          'diabetes_history': diabHisController.text.isNotEmpty ? diabHisController.text : null,
+          'weight': weightController.text.isNotEmpty ? weightController.text : null,
+          'height': heightController.text.isNotEmpty ? heightController.text : null,
+          'is_smoke': smokeValue ?? false,
+          'area': selectedArea ?? '',
+          'id_doctor': selectedDoctorId,
+        }));
         final responseMedicalFolder = await http.post(
           Uri.parse('${ApiUrls.medicalFolderUrlPrefix}${widget.patientId}'),
           headers: {
             'Content-Type': 'application/json',
+
           },
           body: jsonEncode({
             'diabetes_type': diabeteController.text.isNotEmpty ? diabeteController.text : null,
             'diabetes_history': diabHisController.text.isNotEmpty ? diabHisController.text : null,
             'weight': weightController.text.isNotEmpty ? weightController.text : null,
             'height': heightController.text.isNotEmpty ? heightController.text : null,
+            'is_smoke': smokeValue ?? false,
+            'area': selectedArea ?? '',
             'id_doctor': selectedDoctorId,
           }),
         );
 
         if (responseMedicalFolder.statusCode != 200) {
           print('Medical folder registration failed: ${responseMedicalFolder.statusCode} - ${responseMedicalFolder.body}');
-          showErrorSnackBar('Medical folder registration failed. Please try again.');
+          _showErrorSnackBar('Medical folder registration failed. Please try again.');
           return;
         }
 
@@ -158,7 +174,7 @@ class _MedicalFolderRegistrationScreenState
 
       if (idFolder == null) {
         print('Error: id_folder is null or not found in response.');
-        showErrorSnackBar('Error: id_folder is null or not found in response.');
+        _showErrorSnackBar('Error: id_folder is null or not found in response.');
         return;
       }
 
@@ -179,7 +195,7 @@ class _MedicalFolderRegistrationScreenState
 
         if (responseDkaHistory.statusCode != 201) {
           print('DKA History registration failed: ${responseDkaHistory.statusCode} - ${responseDkaHistory.body}');
-          showErrorSnackBar('DKA History registration failed. Please try again.');
+          _showErrorSnackBar('DKA History registration failed. Please try again.');
           return;
         }
       }
@@ -191,7 +207,7 @@ class _MedicalFolderRegistrationScreenState
           Uri.parse('${ApiUrls.patientsDoctorUrlPrefix}${widget.patientId}/doctor/$selectedDoctorId'),
         );
         if (responseUpdateDoctor.statusCode != 200) {
-          showErrorSnackBar('Failed to update patient with doctor. Please try again.');
+          _showErrorSnackBar('Failed to update patient with doctor. Please try again.');
         } else {
           print('Patient updated with doctor successfully!');
         }
@@ -200,15 +216,6 @@ class _MedicalFolderRegistrationScreenState
       print('Error during medical folder registration: $error');
       _showErrorSnackBar('Failed to register medical folder. Please try again.');
     }
-  }
-
-  void showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 3),
-      ),
-    );
   }
 
   void showSuccessDialog() {
@@ -616,6 +623,67 @@ class _MedicalFolderRegistrationScreenState
                         ),
                       ),
                     ),
+                  ),
+                  SizedBox(height: 20),
+                  Text('To improve recommendations :',style: TextStyle(fontWeight: FontWeight.bold),),
+                  SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      labelText: 'Area',
+                      labelStyle: TextStyle(
+                          color: Colors.black, fontSize: 18),
+                      prefixIcon: Icon(Icons.area_chart_outlined,
+                          color: Color(0xFF199A8E)),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: Color(0xFF199A8E), width: 2.0),
+                      ),
+                    ),
+                    value: selectedArea,
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        selectedArea = newValue!;
+                      });
+                    },
+                    items: ['Northeast','Northwest','Southeast','Southwest','Center'].map((String area) {
+                      return DropdownMenuItem<String>(
+                        value: area,
+                        child: Text(area),
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Do you smoke?',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 18,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      DropdownButton<String>(
+                        value: smokeValue,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            smokeValue = newValue;
+                          });
+                        },
+                        style: TextStyle(color: Colors.black, fontSize: 16),
+                        underline: Container(
+                          height: 2,
+                          color: Colors.tealAccent[700],
+                        ),
+                        items: ['Yes', 'No'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 20),
                   Padding(

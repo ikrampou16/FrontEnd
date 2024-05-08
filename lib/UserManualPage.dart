@@ -22,7 +22,7 @@ class UserManualApp extends StatelessWidget {
 }
 
 class UserManualPage extends StatelessWidget {
-  final String _pdfUrl = 'http://192.168.1.3:3000/user_manual.pdf';
+  final String _pdfUrl = 'http://192.168.247.226:3000/user_manual.pdf';
 
   @override
   Widget build(BuildContext context) {

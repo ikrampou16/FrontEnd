@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'api_urls.dart';
 import 'dart:convert';
 
@@ -53,7 +54,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildToggleButtons(), // Include the toggle buttons here
+        _buildToggleButtons(),
         SizedBox(height: 10),
         Expanded(
           child: SingleChildScrollView(
@@ -66,9 +67,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                     child: CircularProgressIndicator(),
                   );
                 } else if (snapshot.hasError) {
-                  // Handle error here
                   print('Error fetching data: ${snapshot.error}');
-                  // Return an empty map or null to prevent the UI from crashing
+                  _showErrorSnackBar('Error fetching data: ${snapshot.error}');
                   return _buildMedicalFolderInfo({});
                 } else {
                   final data = snapshot.data as Map<String, dynamic>;
@@ -89,6 +89,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
       ],
     );
   }
+
   Widget _buildMedicalFolderInfo(Map<String, dynamic> data) {
     if (data.isEmpty) {
       data = {
@@ -96,6 +97,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         'diabetes_history': null,
         'height': null,
         'weight': null,
+        'is_smoke':null,
+        'area':null
       };
     }
     return Column(
@@ -116,6 +119,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         _buildProfileField('Diabetes Diagnosis Date', '${data['diabetes_history']}', Icons.history, true),
         _buildProfileField('Height', '${data['height']}', Icons.height, true),
         _buildProfileField('Weight', '${data['weight']}', Icons.fitness_center, true),
+        _buildProfileField('Smoker', '${data['is_smoke']}', Icons.smoking_rooms_outlined, true),
+        _buildProfileField('Area', '${data['area']}', Icons.area_chart_outlined, true),
       ],
     );
   }
@@ -185,7 +190,9 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         _buildProfileField('Date Of Birth', '${data['date_of_birth']}', Icons.date_range_outlined, false),
         _buildProfileField('Address', '${data['address']}', Icons.location_on_outlined, false),
         _buildProfileField('Email', '${data['email']}', Icons.email_outlined, false),
+        _buildProfileField('Password', '********', Icons.lock_outline, false),
         _buildProfileField('Phone Number', '${data['phone']}', Icons.phone_outlined, false),
+
       ],
     );
   }
@@ -220,7 +227,11 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                   if (isMedicalField) {
                     _showMedicalFolderEditDialog(label, value);
                   } else {
-                    _showEditDialog(label, value);
+                    if (label.toLowerCase() == 'password') {
+                      _showModifyPasswordDialog();
+                    } else {
+                      _showEditDialog(label, value);
+                    }
                   }
                 },
                 icon: Icon(Icons.edit_outlined),
@@ -238,63 +249,234 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
     );
   }
 
-  void _showEditDialog(String label, String currentValue) {
-    TextEditingController textEditingController = TextEditingController(text: currentValue);
+  void _showModifyPasswordDialog() {
+    String currentPassword = '';
+    String newPassword = '';
+    String confirmPassword = '';
+    bool obscureCurrentPassword = true;
+    bool obscureNewPassword = true;
+    bool obscureConfirmPassword = true;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit $label'),
-          content: TextField(
-            controller: textEditingController,
-            decoration: InputDecoration(
-              hintText: 'Enter new $label',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                String newValue = textEditingController.text;
-                if (label.isNotEmpty && newValue.isNotEmpty) {
-                  String lowercaseLabel = label.toLowerCase();
-                  Navigator.of(context).pop();
-                  String requestBody = jsonEncode({'field': lowercaseLabel, 'value': newValue});
-                  try {
-                    final response = await http.put(
-                      Uri.parse(ApiUrls.updateProfileUrl(widget.patientId)),
-                      headers: {'Content-Type': 'application/json'},
-                      body: requestBody,
-                    );
-                    if (response.statusCode == 200) {
-                      // Call _updateProfileData after successful update
-                      await _updateProfileData();
-                    } else {
-                      print('Error updating profile: ${response.statusCode}');
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Modify Password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildPasswordTextField(
+                    labelText: 'Current Password',
+                    onChanged: (value) {
+                      currentPassword = value;
+                    },
+                    obscureText: obscureCurrentPassword,
+                    onTapVisibility: () {
+                      setState(() {
+                        obscureCurrentPassword = !obscureCurrentPassword;
+                      });
+                    },
+                  ),
+                  _buildPasswordTextField(
+                    labelText: 'New Password',
+                    onChanged: (value) {
+                      newPassword = value;
+                    },
+                    obscureText: obscureNewPassword,
+                    onTapVisibility: () {
+                      setState(() {
+                        obscureNewPassword = !obscureNewPassword;
+                      });
+                    },
+                  ),
+                  _buildPasswordTextField(
+                    labelText: 'Confirm Password',
+                    onChanged: (value) {
+                      confirmPassword = value;
+                    },
+                    obscureText: obscureConfirmPassword,
+                    onTapVisibility: () {
+                      setState(() {
+                        obscureConfirmPassword = !obscureConfirmPassword;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (newPassword != confirmPassword) {
+                      _showErrorSnackBar('New passwords do not match');
+                      return;
                     }
-                  } catch (error) {
-                    print('Network error: $error');
-                  }
-                } else {
-                  print('Field or value is empty');
-                }
-              },
-              child: Text('Save'),
-            ),
-          ],
+                    final response = await http.put(
+                      Uri.parse(ApiUrls.modifyPasswordUrl(widget.patientId)),
+                      headers: {'Content-Type': 'application/json'},
+                      body: jsonEncode({
+                        'currentPassword': currentPassword,
+                        'newPassword': newPassword,
+                      }),
+                    );
+
+                    if (response.statusCode == 200) {
+                      _showErrorSnackBar('Password updated successfully');
+                      Navigator.of(context).pop();
+                    } else if (response.statusCode == 401) {
+                      _showErrorSnackBar('Incorrect current password');
+                    } else {
+                      _showErrorSnackBar('Failed to update password');
+                    }
+                  },
+                  child: Text('Modify'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
+  Widget _buildPasswordTextField({
+    required String labelText,
+    required Function(String) onChanged,
+    required bool obscureText,
+    required Function onTapVisibility,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            labelText: labelText,
+            suffixIcon: IconButton(
+              icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility, color: Color(0xFF199A8E)),
+              onPressed: () {
+                onTapVisibility();
+              },
+            ),
+          ),
+          obscureText: obscureText,
+        ),
+        SizedBox(height: 10),
+      ],
+    );
+  }
+
+  void _showEditDialog(String label, String currentValue) async {
+    if (label == 'Date Of Birth') {
+      DateTime? selectedDate = currentValue.isNotEmpty ? DateTime.tryParse(currentValue) : null;
+
+      final pickedDate = await showDatePicker(
+        context: context,
+        initialDate: selectedDate ?? DateTime.now(),
+        firstDate: DateTime(1900),
+        lastDate: DateTime.now(),
+      );
+
+      if (pickedDate != null) {
+        setState(() {
+          currentValue = pickedDate.toIso8601String().substring(0, 10);
+        });
+      } else {
+        return;
+      }
+    }
+
+    TextEditingController textEditingController = TextEditingController(text: currentValue);
+    String? selectedValue;
+    bool isGenderField = label == 'Gender';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Edit $label'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!isGenderField)
+                    TextField(
+                      controller: textEditingController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter new $label',
+                      ),
+                      onChanged: (newValue) {
+                        currentValue = newValue;
+                      },
+                    ),
+                  if (isGenderField)
+                    DropdownButton<String?>(
+                      value: selectedValue,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedValue = newValue;
+                        });
+                      },
+                      items: <String?>[null, 'Male', 'Female'].map((String? value) {
+                        return DropdownMenuItem<String?>(
+                          value: value,
+                          child: Text(value ?? 'None'),
+                        );
+                      }).toList(),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    String newValue = isGenderField ? selectedValue ?? '' : textEditingController.text;
+                    if (label.isNotEmpty && newValue.isNotEmpty) {
+                      String lowercaseLabel = label.toLowerCase();
+                      Navigator.of(context).pop();
+                      String requestBody = jsonEncode({'field': lowercaseLabel, 'value': newValue});
+                      try {
+                        final response = await http.put(
+                          Uri.parse(ApiUrls.updateProfileUrl(widget.patientId)),
+                          headers: {'Content-Type': 'application/json'},
+                          body: requestBody,
+                        );
+                        if (response.statusCode == 200) {
+                          await _updateProfileData();
+                        } else {
+                          print('Error updating profile: ${response.statusCode}');
+                        }
+                      } catch (error) {
+                        print('Network error: $error');
+                      }
+                    } else {
+                      print('Field or value is empty');
+                    }
+                  },
+                  child: Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
   void _showMedicalFolderEditDialog(String label, String currentValue) async {
-    // Check if the field being edited is a date field
     if (label == 'Diabetes Diagnosis Date') {
       DateTime? selectedDate = currentValue.isNotEmpty ? DateTime.tryParse(currentValue) : null;
 
@@ -313,11 +495,10 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         return; // User canceled, do nothing
       }
     }
-
-    // For other fields, show a text field or dropdown
     TextEditingController textEditingController = TextEditingController(text: currentValue);
     String? selectedValue = null;
     bool isDiabetesTypeField = label == 'Diabetes Type';
+    bool isSmoker = label == 'Smoker';
     bool showUnits = label != 'Height' && label != 'Weight';
 
     showDialog(
@@ -331,14 +512,19 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!isDiabetesTypeField)
+                  if (!isDiabetesTypeField && !isSmoker)
                     TextField(
                       controller: textEditingController,
                       decoration: InputDecoration(
                         hintText: 'Enter new $label',
                       ),
                     ),
-                  if (isDiabetesTypeField)
+                  if (!showUnits)
+                    Text(
+                      '(${label == 'Height' ? 'cm' : 'Kg'})',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  if (isSmoker || isDiabetesTypeField) // Check if it's smoker or diabetes type field
                     DropdownButton<String?>(
                       value: selectedValue,
                       onChanged: (String? newValue) {
@@ -346,17 +532,13 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                           selectedValue = newValue;
                         });
                       },
-                      items: <String?>[null, 'Type 1', 'Type 2'].map((String? value) {
+                      items: <String?>[null, ..._getDropdownItems(label)].map((String? value) {
+                        // Add null item at the beginning
                         return DropdownMenuItem<String?>(
                           value: value,
                           child: Text(value ?? 'None'),
                         );
                       }).toList(),
-                    ),
-                  if (!showUnits)
-                    Text(
-                      '(${label == 'Height' ? 'cm' : 'Kg'})',
-                      style: TextStyle(fontSize: 16),
                     ),
                 ],
               ),
@@ -370,6 +552,12 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                 TextButton(
                   onPressed: () async {
                     String newValue = isDiabetesTypeField ? selectedValue ?? '' : textEditingController.text;
+                    if (!isDiabetesTypeField && !isSmoker) {
+                      currentValue = newValue;
+                    }
+                    if (isDiabetesTypeField || isSmoker) {
+                      newValue = selectedValue ?? 'No';
+                    }
                     if (label.isNotEmpty && newValue.isNotEmpty) {
                       String lowercaseLabel = label.toLowerCase();
                       Navigator.of(context).pop();
@@ -401,6 +589,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
       },
     );
   }
+
   Future<Map<String, dynamic>> _fetchProfileData(int patientId) async {
     try {
       final profileResponse = await http.get(
@@ -429,21 +618,23 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         if (medicalFolderData['status'] == true) {
           return medicalFolderData['information'];
         } else {
-          // Initialize with null values if medical folder is not found
           return {
             'diabetes_type': null,
             'diabetes_history': null,
             'height': null,
             'weight': null,
+            'is_smoke':null,
+            'area':null
           };
         }
       } else if (medicalFolderResponse.statusCode == 404) {
-        // Initialize with null values if medical folder is not found
         return {
           'diabetes_type': null,
           'diabetes_history': null,
           'height': null,
           'weight': null,
+          'is_smoke':null,
+          'area':null
         };
       } else {
         throw Exception('Failed to fetch medical folder: ${medicalFolderResponse.statusCode}');
@@ -474,4 +665,21 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
       print('Error updating medical folder data: $error');
     }
   }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+}
+List<String> _getDropdownItems(String label) {
+  if (label == 'Diabetes Type') {
+    return ['Type 1', 'Type 2'];
+  } else if (label == 'Smoker') {
+    return ['Yes', 'No'];
+  }
+  return [];
 }
