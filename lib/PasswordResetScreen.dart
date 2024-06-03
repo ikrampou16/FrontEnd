@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_urls.dart';
 import 'loginScreen.dart';
+import 'status_code.dart';
 
 class PasswordResetScreen extends StatefulWidget {
   final String email;
@@ -59,15 +60,15 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                 'Password Reset',
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: screenWidth * 0.08,
+                  fontSize: screenWidth * 0.07,
                   color: Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Image.asset(
-                'assets/lock.jpg',
-                width: screenWidth * 0.65,
-                height: screenHeight * 0.2,
+                'assets/imm4.png',
+                width: screenWidth * 0.5,
+                height: screenHeight * 0.3,
                 alignment: Alignment.center,
               ),
               Text(
@@ -79,7 +80,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                   color: Colors.black,
                 ),
               ),
-              SizedBox(height: screenHeight * 0.03),
+              SizedBox(height: screenHeight * 0.04),
               Form(
                 key: _formKey,
                 child: Column(
@@ -91,11 +92,11 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                         labelText: 'New Password',
                         labelStyle: TextStyle(fontFamily: 'Poppins'),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.0),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.06),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureText1 ? Icons.visibility_off : Icons.visibility,
+                            _obscureText1 ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                             color: Color(0xFF199A8E),
                           ),
                           onPressed: () {
@@ -112,7 +113,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                         return null;
                       },
                     ),
-                    SizedBox(height: screenHeight * 0.02),
+                    SizedBox(height: screenHeight * 0.03),
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureText2,
@@ -120,11 +121,11 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                         labelText: 'Confirm Password',
                         labelStyle: TextStyle(fontFamily: 'Poppins'),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.0),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.06),
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureText2 ? Icons.visibility_off : Icons.visibility,
+                            _obscureText2 ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                             color: Color(0xFF199A8E),
                           ),
                           onPressed: () {
@@ -144,7 +145,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: screenHeight * 0.03),
+              SizedBox(height: screenHeight * 0.08),
               ElevatedButton(
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
@@ -161,7 +162,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                         }),
                       );
 
-                      if (response.statusCode == 200) {
+                      if (response.statusCode == StatusCodes.ok) {
                         _showSuccessDialog();
                       } else {
                         _showErrorSnackBar();
@@ -177,7 +178,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                   minimumSize: Size(screenWidth * 0.5, 0),
                   padding: EdgeInsets.symmetric(vertical: screenHeight * 0.025),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.04),
                   ),
                 ),
                 child: Text(

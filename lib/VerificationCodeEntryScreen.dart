@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_urls.dart';
 import 'PasswordResetScreen.dart';
+import 'status_code.dart';
 
 class VerificationCodeEntryScreen extends StatefulWidget {
   final String email;
@@ -49,7 +50,7 @@ class _VerificationCodeEntryScreenState
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == StatusCodes.ok) {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -100,19 +101,17 @@ class _VerificationCodeEntryScreenState
                 'Verification',
                 style: TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: screenWidth * 0.08,
+                  fontSize: screenWidth * 0.07,
                   color: Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: screenHeight * 0.05),
               Image.asset(
-                'assets/verify.png',
-                width: screenWidth * 0.4,
-                height: screenHeight * 0.1,
+                'assets/2.png',
+                width: screenWidth * 0.9,
+                height: screenHeight * 0.30,
                 alignment: Alignment.center,
               ),
-              SizedBox(height: screenHeight * 0.05),
               Text(
                 'A verification code has been sent to ${widget.email}. Please enter the code below:',
                 textAlign: TextAlign.center,
@@ -152,7 +151,7 @@ class _VerificationCodeEntryScreenState
                   }),
                 ),
               ),
-              SizedBox(height: screenHeight * 0.04),
+              SizedBox(height: screenHeight * 0.01),
               ElevatedButton(
                 onPressed: isConfirmButtonEnabled
                     ? () {

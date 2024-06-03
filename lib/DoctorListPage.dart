@@ -49,46 +49,74 @@ class DoctorListPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (doctor['image'] != null)
-            _buildDoctorAvatar(doctor['image']),
-          SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildDoctorName(doctor),
                 SizedBox(height: 8),
-                Text(
-                  '${doctor['speciality']}',
-                  style: TextStyle(fontSize: 13, fontFamily: 'Poppins'),
-                ),
+                _buildDoctorSpeciality(doctor['speciality'] ?? 'No speciality'),
                 SizedBox(height: 8),
-                _buildDoctorLocation(doctor['address']),
+                _buildDoctorLocation(doctor['address'] ?? 'No address provided'),
                 SizedBox(height: 8),
-                _buildDoctorEmail(doctor['email']),
+                _buildDoctorEmail(doctor['email'] ?? 'No email provided'),
               ],
             ),
           ),
+          SizedBox(width: 15),
+          _buildDoctorAvatar(doctor['image'] as String?),
         ],
       ),
     );
   }
 
-  Widget _buildDoctorAvatar(String imageUrl) {
-    return CircleAvatar(
-      radius: 30,
-      backgroundImage: NetworkImage(imageUrl),
+  Widget _buildDoctorAvatar(String? imageUrl) {
+    return Container(
+      alignment: Alignment.centerRight,
+      width: 80, // Adjust width as needed
+      height: 110, // Adjust height as needed
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: imageUrl != null && imageUrl.isNotEmpty
+              ? NetworkImage(imageUrl)
+              : AssetImage('assets/imm.png') as ImageProvider,
+          fit: BoxFit.cover,
+        ),
+        borderRadius: BorderRadius.circular(10), // Optional: rounded corners
+        border: Border.all(color: Color(0xFF199A8E), width: 2), // Optional: border color and width
+      ),
     );
   }
 
   Widget _buildDoctorName(Map<String, dynamic> doctor) {
     return Text(
-      'Dr.${doctor['first_name']} ${doctor['last_name']}',
+      'Dr. ${doctor['first_name'] ?? 'First Name'} ${doctor['last_name'] ?? 'Last Name'}',
       style: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.bold,
         fontFamily: 'Poppins',
       ),
+    );
+  }
+
+  Widget _buildDoctorSpeciality(String speciality) {
+    return Row(
+      children: [
+        Icon(
+          Icons.medical_services_outlined,
+          size: 25,
+          color: Color(0xFF199A8E),
+        ),
+        SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            speciality,
+            style: TextStyle(fontSize: 13, fontFamily: 'Poppins'),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
     );
   }
 

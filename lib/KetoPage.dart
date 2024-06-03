@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_urls.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 class KetoPage extends StatefulWidget {
   @override
   _KetoPageState createState() => _KetoPageState();
@@ -13,7 +14,7 @@ class KetoPage extends StatefulWidget {
 class _KetoPageState extends State<KetoPage> {
   int refDevice = 0;
   String state = '';
-  String _pdfUrl = 'http://192.168.1.3:3000/user_manual.pdf';
+  String _pdfUrl = '${ApiUrls.userManualPDF}';
   String? _pdfPath;
   bool _downloading = false;
 
@@ -107,7 +108,12 @@ class _KetoPageState extends State<KetoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Keto Page'),
+        title: Text('KetoSmart Page'    ,
+          style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          fontFamily: "Poppins",
+        ),),
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -148,7 +154,7 @@ class _KetoPageState extends State<KetoPage> {
         Padding(
           padding: EdgeInsets.symmetric(vertical: paddingVertical),
           child: Text(
-            'Your Device Info:',
+            'Your Device Information:',
             style: TextStyle(
               fontSize: titleFontSize,
               fontWeight: FontWeight.bold,
@@ -166,12 +172,12 @@ class _KetoPageState extends State<KetoPage> {
                 Column(
                   children: [
                     Text(
-                      'Ref Device: $refDevice',
+                      'Device Reference: $refDevice',
                       style: TextStyle(fontSize: contentFontSize),
                     ),
                     SizedBox(height: 5),
                     Text(
-                      'State: $state',
+                      'Device Status: $state',
                       style: TextStyle(fontSize: contentFontSize),
                     ),
                   ],

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'api_urls.dart';
 import 'package:confetti/confetti.dart';
+import 'status_code.dart';
 
 class QuizPage extends StatefulWidget {
   @override
@@ -16,12 +17,14 @@ class _QuizPageState extends State<QuizPage> {
   int _score = 0;
   bool _answeredCorrectly = false;
   int? _selectedOptionIndex;
+  bool _answerSelected = false;
   late ConfettiController _confettiController;
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 1));
     fetchQuizData();
   }
 
@@ -34,11 +37,11 @@ class _QuizPageState extends State<QuizPage> {
   Future<void> fetchQuizData() async {
     try {
       final response = await http.get(Uri.parse(ApiUrls.quizUrl));
-      if (response.statusCode == 200) {
+      if (response.statusCode == StatusCodes.ok) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
           _questions = data.map((item) => QuizQuestion.fromJson(item)).toList();
-          _questions.shuffle(); // Shuffle the list of questions
+          _questions.shuffle();
         });
       } else {
         throw Exception('Failed to load quiz data');
@@ -49,7 +52,7 @@ class _QuizPageState extends State<QuizPage> {
   }
 
   void _checkAnswer(int selectedOptionIndex) {
-    if (_answeredCorrectly) return;
+    if (_answeredCorrectly || _answerSelected) return;
 
     final correctOptionIndex = _questions[_currentQuestionIndex].correctOptionIndex;
     setState(() {
@@ -59,6 +62,7 @@ class _QuizPageState extends State<QuizPage> {
         _score += 10;
         _confettiController.play();
       }
+      _answerSelected = true;
     });
   }
 
@@ -66,233 +70,239 @@ class _QuizPageState extends State<QuizPage> {
     setState(() {
       _answeredCorrectly = false;
       _selectedOptionIndex = null;
+      _answerSelected = false;
       _currentQuestionIndex = (_currentQuestionIndex + 1) % _questions.length;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_questions.isEmpty) {
-      return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
     final double screenHeight = MediaQuery.of(context).size.height;
     final double screenWidth = MediaQuery.of(context).size.width;
 
-    ElevatedButton? nextQuestionButton;
-    if (_selectedOptionIndex != null) {
-      nextQuestionButton = ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green[100],
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 15),
-          minimumSize: Size(screenWidth * 0.3, screenHeight * 0.1),
-        ),
-        onPressed: _nextQuestion,
-        child: Text(
-          'Next Question',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.green[50],
+        backgroundColor: Colors.amber[200], // Set the color of the AppBar
         elevation: 0,
-        title: Text(
-          'Quiz',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.5,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Center(
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 25),
-                decoration: BoxDecoration(
-                  color: Colors.deepOrangeAccent[100],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Score : $_score',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Back',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                letterSpacing: 1.5,
               ),
             ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/quiiz.jpg"),
-                fit: BoxFit.cover,
+            Text(
+              'Question ${_currentQuestionIndex + 1}/20', // Display question length in the AppBar
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black, // Set the text color of the question length
+                letterSpacing: 1.5,
               ),
             ),
-          ),
-          Container(
-            color: Colors.black.withOpacity(0.3),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                14,
-                MediaQuery.of(context).padding.top + kToolbarHeight - 65,
-                19,
-                17,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    padding: EdgeInsets.all(10.0),
-                    child: Text(
-                      _questions[_currentQuestionIndex].question,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 24.0, fontFamily: 'Poppins'),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.025),
-                  ..._questions[_currentQuestionIndex]
-                      .options
-                      .asMap()
-                      .entries
-                      .map(
-                        (entry) {
-                      final isSelected = _selectedOptionIndex == entry.key;
-                      final isCorrect = entry.key == _questions[_currentQuestionIndex].correctOptionIndex;
-                      final color = isSelected
-                          ? _answeredCorrectly
-                          ? Colors.green
-                          : Colors.red
-                          : null;
 
-                      return Column(
-                        children: [
-                          SizedBox(height: screenHeight * 0.0125),
-                          Container(
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.7),
-                                  blurRadius: 5,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: () {
-                                _checkAnswer(entry.key);
-                              },
-                              style: ButtonStyle(
-                                backgroundColor: _selectedOptionIndex != null && entry.key == _questions[_currentQuestionIndex].correctOptionIndex
-                                    ? MaterialStateProperty.all<Color>(Colors.green)
-                                    : _selectedOptionIndex == entry.key && !_answeredCorrectly
-                                    ? MaterialStateProperty.all<Color>(Colors.red)
-                                    : MaterialStateProperty.all<Color>(Colors.green[50]!),
-                                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                                  RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(25.0),
+          ],
+        ),
+      ),
+      body: _questions.isEmpty
+          ? Center(
+        child: CircularProgressIndicator(),
+      )
+          : SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            children: [
+              SizedBox(height: screenHeight * 0.01),
+              Container(
+                height: screenHeight * 0.08,
+                width: screenHeight * 0.08,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.deepOrange[400],
+                ),
+                child: Center(
+                  child: Text(
+                    '$_score',
+                    style: TextStyle(
+                      fontSize: 24,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.02),
+              Expanded(
+                child: Card(
+                  elevation: 5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                  ),
+                  color: Colors.transparent, // Set color to transparent to use gradient
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20.0),
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomRight,
+                        end: Alignment.topLeft,
+                        colors: [Colors.white, Colors.lightBlue[100]!],
+                      ),
+                    ),
+                    child: Padding(
+                    padding: const EdgeInsets.all(13.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          _questions[_currentQuestionIndex].question,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20.0,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.03),
+                        Expanded(
+                          child: ListView(
+                            shrinkWrap: true,
+                            children: _questions[_currentQuestionIndex].options
+                                .asMap()
+                                .entries
+                                .map((entry) {
+                              final isSelected =
+                                  _selectedOptionIndex == entry.key;
+                              final isCorrect = entry.key ==
+                                  _questions[_currentQuestionIndex]
+                                      .correctOptionIndex;
+                              final color = isSelected
+                                  ? _answeredCorrectly
+                                  ? Colors.green
+                                  : Colors.red
+                                  : Colors.white;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0),
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    _checkAnswer(entry.key);
+                                  },
+                                  style: ButtonStyle(
+                                    backgroundColor: _selectedOptionIndex != null && entry.key == _questions[_currentQuestionIndex].correctOptionIndex
+                                        ? MaterialStateProperty.all<Color>(Colors.green)
+                                        : _selectedOptionIndex == entry.key && !_answeredCorrectly
+                                        ? MaterialStateProperty.all<Color>(Colors.red)
+                                        : MaterialStateProperty.all<Color>(Colors.white!),
+                                    shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                                      RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(25.0),
+                                        side: BorderSide(color: Colors.black),
+                                      ),
+                                    ),
+                                    elevation: MaterialStateProperty.all<double>(0),
+                                    minimumSize: MaterialStateProperty.all<Size>(
+                                      Size(screenWidth * 0.65, 48.0),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    entry.value,
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      color: Colors.black,
+                                      fontSize: 16,
+                                    ),
                                   ),
                                 ),
-                                elevation: MaterialStateProperty.all<double>(0),
-                                minimumSize: MaterialStateProperty.all<Size>(Size(screenWidth * 0.65, screenHeight * 0.075)),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        if (_answeredCorrectly)
+                          SizedBox(
+                            height: 100.0,
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: ConfettiWidget(
+                                confettiController: _confettiController,
+                                blastDirection: -pi / 2,
+                                emissionFrequency: 0.05,
+                                numberOfParticles: 20,
+                                maxBlastForce: 20,
+                                minBlastForce: 5,
+                                gravity: 0.1,
                               ),
+                            ),
+                          ),
+                        SizedBox(height: screenHeight * 0.02),
+                        Row(
+                          mainAxisAlignment:
+                          MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red[300],
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                padding:
+                                EdgeInsets.symmetric(vertical: 15),
+                                minimumSize:
+                                Size(screenWidth * 0.3, 48.0),
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
                               child: Text(
-                                entry.value,
+                                'Exit Quiz',
                                 style: TextStyle(
                                   fontFamily: 'Poppins',
-                                  color: Colors.black,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(height: screenHeight * 0.0125),
-                        ],
-                      );
-                    },
-                  ).toList(),
-                  if (_answeredCorrectly)
-                    Positioned.fill(
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: ConfettiWidget(
-                          confettiController: _confettiController,
-                          blastDirection: -pi / 2,
-                          emissionFrequency: 0.05,
-                          numberOfParticles: 20,
-                          maxBlastForce: 20,
-                          minBlastForce: 5,
-                          gravity: 0.1,
+                            if (_answerSelected)
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green[400],
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                    BorderRadius.circular(30),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 15),
+                                  minimumSize:
+                                  Size(screenWidth * 0.3, 48.0),
+                                ),
+                                onPressed: _nextQuestion,
+                                child: Text(
+                                  'Next Question',
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
+                      ],
                     ),
-                  SizedBox(height: screenHeight * 0.05),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[200],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 15),
-                          minimumSize: Size(screenWidth * 0.3, screenHeight * 0.1),
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: Text(
-                          'Exit Quiz',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      if (nextQuestionButton != null) nextQuestionButton,
-                    ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

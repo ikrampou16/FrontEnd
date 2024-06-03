@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'loginScreen.dart';
 import 'api_urls.dart';
 import 'VerificationCodeEntryScreen.dart';
+import 'status_code.dart';
 
 class PasswordRecoveryScreen extends StatefulWidget {
   const PasswordRecoveryScreen({Key? key}) : super(key: key);
@@ -65,7 +66,7 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
           _isLoading = false;
         });
 
-        if (response.statusCode == 200) {
+        if (response.statusCode == StatusCodes.ok) {
           final responseData = json.decode(response.body);
           final verificationCode = responseData['verificationCode'];
 
@@ -88,11 +89,10 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
               ),
             ),
           );
-        } else if (response.statusCode == 404) {
+        } else if (response.statusCode == StatusCodes.notFound) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                  'Email not registered. Please enter a valid email address.'),
+              content: Text('Email not registered. Please enter a valid email address.'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -128,12 +128,11 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Image.asset(
-                  'assets/email.png',
-                  width: screenWidth * 0.45,
-                  height: screenHeight * 0.2,
+                  'assets/1.png',
+                  width: screenWidth * 0.6,
+                  height: screenHeight * 0.25,
                   alignment: Alignment.center,
                 ),
-                SizedBox(height: screenHeight * 0.05),
                 Text(
                   'Forgot Password?',
                   style: TextStyle(
@@ -158,17 +157,17 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
                   controller: _emailController,
                   validator: _validateEmail,
                   decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.email, color: Color(0xFF199A8E)),
+                    prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF199A8E)),
                     labelText: 'Enter your email',
                     labelStyle: TextStyle(
                       fontFamily: 'Poppins',
                       color: Colors.black,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.06),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.06),
                       borderSide: BorderSide(color: Color(0xFF199A8E)),
                     ),
                   ),
@@ -183,7 +182,7 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF199A8E),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.1),
                     ),
                     padding: EdgeInsets.symmetric(
                         vertical: screenHeight * 0.025),

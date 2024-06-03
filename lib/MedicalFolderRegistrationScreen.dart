@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'api_urls.dart';
 import 'loginScreen.dart';
+import 'status_code.dart';
 
 class MedicalFolderRegistrationScreen extends StatefulWidget {
   final int patientId;
@@ -31,7 +32,7 @@ class _MedicalFolderRegistrationScreenState
   bool showDKHFields = false;
   String errorMessage = '';
   String? dkaOrderValue;
-  String? smokeValue = 'No';
+  String? smokeValue;
   String? selectedArea;
   List<Map<String, dynamic>> doctorsList = [];
   List<Map<String, dynamic>> savedDkaHistoryList = [];
@@ -52,12 +53,10 @@ class _MedicalFolderRegistrationScreenState
 
   Future<void> fetchDoctors(BuildContext context) async {
     try {
-      final response = await http.get(
-          Uri.parse(ApiUrls.doctorsNameUrl));
+      final response = await http.get(Uri.parse(ApiUrls.doctorsNameUrl));
 
-      if (response.statusCode == 200) {
-        final List<dynamic> decodedData =
-        json.decode(response.body)['doctors'];
+      if (response.statusCode == StatusCodes.ok) {
+        final List<dynamic> decodedData = json.decode(response.body)['doctors'];
         setState(() {
           doctorsList = decodedData.cast<Map<String, dynamic>>().toList();
         });
@@ -76,21 +75,23 @@ class _MedicalFolderRegistrationScreenState
       String? doctorFirstName;
       String? doctorLastName;
 
+      // Check if a doctor is selected from the list or not
       if (selectDoctorFromList) {
         selectedDoctorId = int.tryParse(doctorFirstNameController.text);
       } else {
         doctorFirstName = doctorFirstNameController.text;
         doctorLastName = doctorLastNameController.text;
       }
+
+      // Check if the patient ID is valid
       if (widget.patientId == null) {
         print('Error: Invalid patient ID');
         _showErrorSnackBar('Invalid patient ID. Please try again.');
         return;
       }
-      int? idFolder;
+
+      // Create a new doctor if not selected from the list
       if (!selectDoctorFromList) {
-        int? currentPatientId = widget.patientId;
-        print('Current Patient ID: $currentPatientId');
         final responseCreateDoctor = await http.post(
           Uri.parse('${ApiUrls.optionalDoctorUrl}'),
           headers: {
@@ -102,81 +103,48 @@ class _MedicalFolderRegistrationScreenState
             'optional': true,
           }),
         );
-        if (responseCreateDoctor.statusCode != 200) {
-          print('Doctor creation failed: ${responseCreateDoctor.statusCode} - ${responseCreateDoctor.body}');
-          _showErrorSnackBar('Doctor creation failed. Please try again.');
-          return;
+
+        if (responseCreateDoctor.statusCode != StatusCodes.ok) {
+          throw Exception('Doctor creation failed');
         }
 
         final Map<String, dynamic> createdDoctor = json.decode(responseCreateDoctor.body);
         selectedDoctorId = createdDoctor['id'];
-        print('Patient ID first : $currentPatientId');
-
-        final responseMedicalFolderWithNewDoctor = await http.post(
-          Uri.parse('${ApiUrls.medicalFolderUrlPrefix}$currentPatientId'),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            'diabetes_type': diabeteController.text.isNotEmpty ? diabeteController.text : null,
-            'diabetes_history': diabHisController.text.isNotEmpty ? diabHisController.text : null,
-            'weight': weightController.text.isNotEmpty ? weightController.text : null,
-            'height': heightController.text.isNotEmpty ? heightController.text : null,
-            'is_smoke': smokeValue ?? false,
-            'area': selectedArea ?? '',
-            'id_doctor': selectedDoctorId,
-          }),
-        );
-        if (responseMedicalFolderWithNewDoctor.statusCode != 200) {
-          print('Medical folder registration failed with the new doctor: ${responseMedicalFolderWithNewDoctor.statusCode} - ${responseMedicalFolderWithNewDoctor.body}');
-          _showErrorSnackBar('Medical folder registration failed with the new doctor. Please try again.');
-          return;
-        }
-
-        final dynamic decodedResponse = json.decode(responseMedicalFolderWithNewDoctor.body);
-        idFolder = decodedResponse['id_folder'] as int?;
-      } else {
-        print(jsonEncode({
-          'diabetes_type': diabeteController.text.isNotEmpty ? diabeteController.text : null,
-          'diabetes_history': diabHisController.text.isNotEmpty ? diabHisController.text : null,
-          'weight': weightController.text.isNotEmpty ? weightController.text : null,
-          'height': heightController.text.isNotEmpty ? heightController.text : null,
-          'is_smoke': smokeValue ?? false,
-          'area': selectedArea ?? '',
-          'id_doctor': selectedDoctorId,
-        }));
-        final responseMedicalFolder = await http.post(
-          Uri.parse('${ApiUrls.medicalFolderUrlPrefix}${widget.patientId}'),
-          headers: {
-            'Content-Type': 'application/json',
-
-          },
-          body: jsonEncode({
-            'diabetes_type': diabeteController.text.isNotEmpty ? diabeteController.text : null,
-            'diabetes_history': diabHisController.text.isNotEmpty ? diabHisController.text : null,
-            'weight': weightController.text.isNotEmpty ? weightController.text : null,
-            'height': heightController.text.isNotEmpty ? heightController.text : null,
-            'is_smoke': smokeValue ?? false,
-            'area': selectedArea ?? '',
-            'id_doctor': selectedDoctorId,
-          }),
-        );
-
-        if (responseMedicalFolder.statusCode != 200) {
-          print('Medical folder registration failed: ${responseMedicalFolder.statusCode} - ${responseMedicalFolder.body}');
-          _showErrorSnackBar('Medical folder registration failed. Please try again.');
-          return;
-        }
-
-        final dynamic decodedResponse = json.decode(responseMedicalFolder.body);
-        idFolder = decodedResponse['id_folder'] as int?;
       }
 
-      if (idFolder == null) {
-        print('Error: id_folder is null or not found in response.');
-        _showErrorSnackBar('Error: id_folder is null or not found in response.');
-        return;
+      // Prepare the request body for medical folder creation
+      final Map<String, dynamic> requestBody = {
+        'diabetes_type': diabeteController.text.isNotEmpty ? diabeteController.text : null,
+        'diabetes_history': diabHisController.text.isNotEmpty ? diabHisController.text : null,
+        'weight': weightController.text.isNotEmpty ? weightController.text : null,
+        'height': heightController.text.isNotEmpty ? heightController.text : null,
+        'id_doctor': selectedDoctorId,
+      };
+
+      // Include 'area' and 'is_smoke' only if not empty
+      if (selectedArea != null && selectedArea!.isNotEmpty) {
+        requestBody['area'] = selectedArea;
       }
+
+      if (smokeValue != null && smokeValue!.isNotEmpty) {
+        requestBody['is_smoke'] = smokeValue;
+      }
+
+      // Send the request to create a medical folder
+      final responseMedicalFolder = await http.post(
+        Uri.parse('${ApiUrls.medicalFolderUrlPrefix}${widget.patientId}'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (responseMedicalFolder.statusCode != StatusCodes.ok) {
+        throw Exception('Medical folder registration failed');
+      }
+
+      final dynamic decodedResponse = json.decode(responseMedicalFolder.body);
+      final int? idFolder = decodedResponse['id_folder'] as int?;
 
       // Register DKA history
       for (final dkaHistoryData in savedDkaHistoryList) {
@@ -193,21 +161,20 @@ class _MedicalFolderRegistrationScreenState
           }),
         );
 
-        if (responseDkaHistory.statusCode != 201) {
-          print('DKA History registration failed: ${responseDkaHistory.statusCode} - ${responseDkaHistory.body}');
-          _showErrorSnackBar('DKA History registration failed. Please try again.');
-          return;
+        if (responseDkaHistory.statusCode != StatusCodes.created) {
+          throw Exception('DKA History registration failed');
         }
       }
 
       showSuccessDialog();
 
+      // Update patient with doctor if selected
       if (selectedDoctorId != null) {
         final responseUpdateDoctor = await http.put(
           Uri.parse('${ApiUrls.patientsDoctorUrlPrefix}${widget.patientId}/doctor/$selectedDoctorId'),
         );
-        if (responseUpdateDoctor.statusCode != 200) {
-          _showErrorSnackBar('Failed to update patient with doctor. Please try again.');
+        if (responseUpdateDoctor.statusCode != StatusCodes.ok) {
+          print('Failed to update patient with doctor');
         } else {
           print('Patient updated with doctor successfully!');
         }
@@ -247,6 +214,7 @@ class _MedicalFolderRegistrationScreenState
       },
     );
   }
+
   void saveDkaHistory() {
     setState(() {
       savedDkaHistoryList.add({
@@ -259,6 +227,7 @@ class _MedicalFolderRegistrationScreenState
       dateController.clear();
     });
   }
+
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -267,6 +236,49 @@ class _MedicalFolderRegistrationScreenState
       ),
     );
   }
+
+  Widget _buildRegisterButton(BuildContext context) {
+    return Container(
+        color: Colors.white,
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              registerMedicalFolder(context);
+            },
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                vertical: MediaQuery.of(context).size.height * 0.02,
+              ),
+              child: Text(
+                'Register',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.bold,
+                  fontSize: MediaQuery.of(context).size.width * 0.05,
+                ),
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                vertical: MediaQuery.of(context).size.height * 0.001,
+              ),
+              minimumSize: Size(
+                MediaQuery.of(context).size.width,
+                MediaQuery.of(context).size.height * 0.05,
+              ),
+              backgroundColor: Color(0xFF199A8E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  MediaQuery.of(context).size.width * 0.1,
+                ),
+              ),
+            ),
+          ),
+        ));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -280,21 +292,10 @@ class _MedicalFolderRegistrationScreenState
         backgroundColor: Colors.white,
         automaticallyImplyLeading: false,
         title: Text(
-          'Medical Folder Registration',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18),
-        ),
+            'Medical Folder Registration'),
       ),
       body: SingleChildScrollView(
         child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.white,
-                Color(0xFFB0EFE9),
-              ],
-            ),
-          ),
           child: Padding(
             padding: EdgeInsets.all(15),
             child: Form(
@@ -302,9 +303,17 @@ class _MedicalFolderRegistrationScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text(
+                    'Diabetes Information',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.sick, color: Color(0xFF199A8E)),
+                      prefixIcon: Icon(Icons.sick_outlined, color: Color(0xFF199A8E)),
                       labelText: 'Diabetes Type',
                       labelStyle: TextStyle(
                         fontFamily: 'Poppins',
@@ -333,7 +342,7 @@ class _MedicalFolderRegistrationScreenState
                   TextFormField(
                     controller: diabHisController,
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.history, color: Color(0xFF199A8E)),
+                      prefixIcon: Icon(Icons.history_outlined, color: Color(0xFF199A8E)),
                       labelText: 'Diabetes Diagnosis Date',
                       labelStyle: TextStyle(
                         fontFamily: 'Poppins',
@@ -348,7 +357,7 @@ class _MedicalFolderRegistrationScreenState
                         onTap: () {
                           _selectDate(context, diabHisController);
                         },
-                        child: Icon(Icons.calendar_today, color: Color(0xFF199A8E)),
+                        child: Icon(Icons.calendar_month_outlined, color: Color(0xFF199A8E)),
                       ),
                     ),
                     readOnly: true,
@@ -384,7 +393,7 @@ class _MedicalFolderRegistrationScreenState
                               color: Colors.black,
                             ),
                             prefixIcon: Icon(
-                              Icons.history,
+                              Icons.history_outlined,
                               color: Color(0xFF199A8E),
                             ),
                             focusedBorder: UnderlineInputBorder(
@@ -428,7 +437,7 @@ class _MedicalFolderRegistrationScreenState
                               color: Colors.black,
                             ),
                             prefixIcon: Icon(
-                              Icons.history,
+                              Icons.history_outlined,
                               color: Color(0xFF199A8E),
                             ),
                             focusedBorder: UnderlineInputBorder(
@@ -458,7 +467,7 @@ class _MedicalFolderRegistrationScreenState
                               onTap: () {
                                 _selectDate(context,dateController);
                               },
-                              child: Icon(Icons.calendar_today, color: Color(0xFF199A8E)),
+                              child: Icon(Icons.calendar_month_outlined, color: Color(0xFF199A8E)),
                             ),
                           ),
                           readOnly: true,
@@ -503,7 +512,7 @@ class _MedicalFolderRegistrationScreenState
                         labelText: 'Select Doctor',
                         labelStyle: TextStyle(
                             color: Colors.black, fontSize: 18),
-                        prefixIcon: Icon(Icons.person,
+                        prefixIcon: Icon(Icons.person_outline,
                             color: Color(0xFF199A8E)),
                         focusedBorder: UnderlineInputBorder(
                           borderSide: BorderSide(
@@ -536,7 +545,7 @@ class _MedicalFolderRegistrationScreenState
                         );
                       }).toList(),
                       style: TextStyle(color: Colors.black),
-                      icon: Icon(Icons.arrow_drop_down,
+                      icon: Icon(Icons.arrow_drop_down_outlined,
                           color: Color(0xFF199A8E)),
                     ),
                   ),
@@ -554,7 +563,7 @@ class _MedicalFolderRegistrationScreenState
                         TextFormField(
                           controller: doctorFirstNameController,
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.person,
+                            prefixIcon: Icon(Icons.person_outline,
                                 color: Color(0xFF199A8E)),
                             labelText: 'Doctor First Name',
                             labelStyle: TextStyle(
@@ -572,7 +581,7 @@ class _MedicalFolderRegistrationScreenState
                         TextFormField(
                           controller: doctorLastNameController,
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.person,
+                            prefixIcon: Icon(Icons.person_outline,
                                 color: Color(0xFF199A8E)),
                             labelText: 'Doctor Last Name',
                             labelStyle: TextStyle(
@@ -589,10 +598,18 @@ class _MedicalFolderRegistrationScreenState
                       ],
                     ),
                   SizedBox(height: 10),
+                  Text(
+                    'General Information',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
                   TextFormField(
                     controller: weightController,
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.scale,
+                      prefixIcon: Icon(Icons.scale_outlined,
                           color: Color(0xFF199A8E)),
                       labelText: 'Weight In kg',
                       labelStyle: TextStyle(
@@ -610,7 +627,7 @@ class _MedicalFolderRegistrationScreenState
                   TextFormField(
                     controller: heightController,
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.horizontal_rule,
+                      prefixIcon: Icon(Icons.horizontal_rule_outlined,
                           color: Color(0xFF199A8E)),
                       labelText: 'Height In cm',
                       labelStyle: TextStyle(
@@ -625,7 +642,8 @@ class _MedicalFolderRegistrationScreenState
                     ),
                   ),
                   SizedBox(height: 20),
-                  Text('To improve recommendations :',style: TextStyle(fontWeight: FontWeight.bold),),
+                  Text('To improve recommendations ',style: TextStyle(fontWeight: FontWeight.bold,
+                  fontSize: 16),),
                   SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(
@@ -651,6 +669,8 @@ class _MedicalFolderRegistrationScreenState
                         child: Text(area),
                       );
                     }).toList(),
+                    icon: Icon(Icons.arrow_drop_down_outlined,
+                        color: Color(0xFF199A8E)),
                   ),
                   SizedBox(height: 10),
                   Row(
@@ -676,9 +696,9 @@ class _MedicalFolderRegistrationScreenState
                           height: 2,
                           color: Colors.tealAccent[700],
                         ),
-                        items: ['Yes', 'No'].map((String value) {
+                        items: <String>['Choose an option', 'Yes', 'No'].map((String value) {
                           return DropdownMenuItem<String>(
-                            value: value,
+                            value: value == 'Choose an option' ? null : value,
                             child: Text(value),
                           );
                         }).toList(),
@@ -686,43 +706,7 @@ class _MedicalFolderRegistrationScreenState
                     ],
                   ),
                   SizedBox(height: 20),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: MediaQuery.of(context).size.width * 0.2,
-                        vertical: MediaQuery.of(context).size.height * 0.04),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        registerMedicalFolder(context);
-                      },
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                            vertical:
-                            MediaQuery.of(context).size.height * 0.02),
-                        child: Text(
-                          'Register',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.bold,
-                            fontSize:
-                            MediaQuery.of(context).size.width * 0.05,
-                          ),
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                            vertical:
-                            MediaQuery.of(context).size.height * 0.001),
-                        minimumSize: Size(MediaQuery.of(context).size.width,
-                            MediaQuery.of(context).size.height * 0.05),
-                        backgroundColor: Color(0xFF199A8E),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                              MediaQuery.of(context).size.width * 0.1),
-                        ),
-                      ),
-                    ),
-                  ),
+                  _buildRegisterButton(context),
                 ],
               ),
             ),

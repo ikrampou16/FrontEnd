@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'RecommendationResultPage.dart';
 import 'api_urls.dart';
 import 'dart:convert';
 import 'DoctorListPage.dart';
@@ -12,12 +13,28 @@ import 'QuizPage.dart';
 import 'KetoPage.dart';
 import 'CachHelper.dart';
 import 'loginScreen.dart';
+import 'status_code.dart';
 
 class FirstPage extends StatefulWidget {
   final String firstName;
-  final int? patientId;
+  final int patientId;
+  final String pythonOutput;
+  final int age;
+  final String gender;
+  final String? diabetesType;
+  final String? area;
+  final String? isSmoke;
 
-  FirstPage({required this.firstName, this.patientId});
+  FirstPage({
+    required this.firstName,
+    required this.patientId,
+    required this.pythonOutput,
+    required this.age,
+    required this.gender,
+     this.diabetesType,
+     this.area,
+     this.isSmoke,
+  });
 
   @override
   _FirstPageState createState() => _FirstPageState();
@@ -32,6 +49,7 @@ class _FirstPageState extends State<FirstPage> {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
     _cacheData();
+
   }
 
   @override
@@ -44,6 +62,7 @@ class _FirstPageState extends State<FirstPage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('firstName', widget.firstName);
     await prefs.setInt('patientId', widget.patientId ?? 0);
+    await prefs.setString('pythonOutput', widget.pythonOutput);
   }
 
   Future<void> _showLogoutConfirmationDialog() async {
@@ -71,7 +90,18 @@ class _FirstPageState extends State<FirstPage> {
             ),
             TextButton(
               onPressed: () async {
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                await prefs.remove('patientId');
+                await prefs.remove('firstName');
+                await prefs.remove('pythonOutput');
+                await prefs.remove('age');
+                await prefs.remove('gender');
+                await prefs.remove('diabetesType');
+                await prefs.remove('isSmoke');
+                await prefs.remove('area');
                 bool loggedOut = await CachHelper.removdata(key: 'token');
+                // Also remove the other key related to login state
+                await prefs.remove('isLoggedIn');
                 if (loggedOut) {
                   // Replace all routes in the stack with the login screen
                   Navigator.pushAndRemoveUntil(
@@ -103,6 +133,29 @@ class _FirstPageState extends State<FirstPage> {
     });
   }
 
+  Future<void> _fetchDoctorsAndNavigate() async {
+    final response = await http.get(Uri.parse(ApiUrls.doctorsUrl));
+
+    if (response.statusCode == StatusCodes.ok) {
+      final data = jsonDecode(response.body);
+
+      if (data['status'] == true) {
+        final List doctors = data['doctors'];
+        print(doctors);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DoctorListPage(doctors: doctors),
+          ),
+        );
+      } else {
+        print('Failed to fetch doctors: ${data['message']}');
+      }
+    } else {
+      print('Failed to fetch doctors: ${StatusCodes.getMessage(response.statusCode)}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -111,7 +164,7 @@ class _FirstPageState extends State<FirstPage> {
         return true;
       },
       child: Scaffold(
-        backgroundColor: Colors.teal[50],
+        backgroundColor: Colors.white,
         body: PageView(
           controller: _pageController,
           onPageChanged: (index) {
@@ -123,15 +176,17 @@ class _FirstPageState extends State<FirstPage> {
             _buildHomePage(),
             _buildMapPage(),
             _buildHistoryPage(),
+            _buildRecommendationPage(),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           selectedItemColor: Color(0xFF199A8E),
+          unselectedItemColor: Colors.grey, // Set color for unselected items
           onTap: _onItemTapped,
           items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home),
+              icon: Icon(Icons.home_outlined),
               label: 'Home',
             ),
             BottomNavigationBarItem(
@@ -139,8 +194,12 @@ class _FirstPageState extends State<FirstPage> {
               label: 'Map',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.history),
+              icon: Icon(Icons.history_outlined),
               label: 'History',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.real_estate_agent_outlined),
+              label: 'Recommendation',
             ),
           ],
         ),
@@ -156,7 +215,11 @@ class _FirstPageState extends State<FirstPage> {
           Container(
             height: MediaQuery.of(context).size.height * 0.30,
             decoration: BoxDecoration(
-              color: Color(0xFF199A8E),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF199A8E), Color(0xFF00695C)],
+              ),
               borderRadius: BorderRadius.vertical(
                 bottom: Radius.circular(25),
               ),
@@ -169,78 +232,61 @@ class _FirstPageState extends State<FirstPage> {
                 ),
               ],
             ),
-            padding: EdgeInsets.all(20),
-            child: Stack(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Positioned(
-                  top: 15,
-                  left: MediaQuery.of(context).size.width * 0.8,
-                  child: GestureDetector(
-                    onTap: () async {
-                      await _showLogoutConfirmationDialog();
-                    },
-                    child: Icon(
-                      Icons.logout,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 15,
-                  child: GestureDetector(
-                    onTap: () {
-                      if (widget.patientId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PatientProfilePage(patientId: widget.patientId!),
-                          ),
-                        );
-                      } else {
-                        print('Patient ID is null');
-                      }
-                    },
-                    child: Icon(
-                      Icons.perm_identity_outlined,
-                      color: Colors.white,
-                      size: 35,
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    SizedBox(height: 45),
-                    Text(
-                      'Hi, ${widget.firstName} !',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Poppins',
+                    GestureDetector(
+                      onTap: () async {
+                        await _showLogoutConfirmationDialog();
+                      },
+                      child: Icon(
+                        Icons.logout_outlined,
                         color: Colors.white,
-                        fontSize: 30,
+                        size: 30,
                       ),
                     ),
-                    SizedBox(height: 20),
-                    Text(
-                      'We hope you are feeling good today!',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
+                    GestureDetector(
+                      onTap: () {
+                        if (widget.patientId != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PatientProfilePage(patientId: widget.patientId!),
+                            ),
+                          );
+                        } else {
+                          print('Patient ID is null');
+                        }
+                      },
+                      child: Icon(
+                        Icons.perm_identity_outlined,
                         color: Colors.white,
-                        fontSize: 20,
+                        size: 35,
                       ),
                     ),
                   ],
                 ),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      'assets/logomob.png',
-                      width: 30,
-                      height: 30,
-                    ),
+                SizedBox(height: 20),
+                Text(
+                  'Hi, ${widget.firstName} !',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Poppins',
+                    color: Colors.white,
+                    fontSize: 30,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'We hope you are feeling good today!',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    color: Colors.white,
+                    fontSize: 20,
                   ),
                 ),
               ],
@@ -261,17 +307,17 @@ class _FirstPageState extends State<FirstPage> {
                 ),
               ],
             ),
-            margin: EdgeInsets.symmetric(horizontal: 25),
+            margin: EdgeInsets.symmetric(horizontal: 40),
             padding: EdgeInsets.all(15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(30),
                   child: Image.asset(
-                    'assets/persone.jpg',
-                    width: 90,
-                    height: 90,
+                    'assets/imm1.png',
+                    width: 80,
+                    height: 80,
                   ),
                 ),
                 SizedBox(width: 50),
@@ -287,28 +333,7 @@ class _FirstPageState extends State<FirstPage> {
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: () async {
-                        final response = await http.get(Uri.parse(ApiUrls.doctorsUrl));
-
-                        if (response.statusCode == 200) {
-                          final data = jsonDecode(response.body);
-
-                          if (data['status'] == true) {
-                            final List doctors = data['doctors'];
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DoctorListPage(doctors: doctors),
-                              ),
-                            );
-                          } else {
-                            print('Failed to fetch doctors: ${data['message']}');
-                          }
-                        } else {
-                          print('Failed to fetch doctors: ${response.statusCode}');
-                        }
-                      },
+                      onPressed: _fetchDoctorsAndNavigate,
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(90, 35),
                       ),
@@ -328,7 +353,7 @@ class _FirstPageState extends State<FirstPage> {
           ),
           SizedBox(height: 20),
           Container(
-            height: MediaQuery.of(context).size.height * 0.19,
+            height: MediaQuery.of(context).size.height * 0.18,
             decoration: BoxDecoration(
               color: Color(0xFF80CBC4),
               borderRadius: BorderRadius.circular(30),
@@ -341,7 +366,7 @@ class _FirstPageState extends State<FirstPage> {
                 ),
               ],
             ),
-            margin: EdgeInsets.symmetric(horizontal: 25),
+            margin: EdgeInsets.symmetric(horizontal: 40),
             padding: EdgeInsets.all(20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -349,9 +374,9 @@ class _FirstPageState extends State<FirstPage> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(30),
                   child: Image.asset(
-                    'assets/newquizz.jpg',
-                    width: 90,
-                    height: 90,
+                    'assets/imm3.png',
+                    width: 80,
+                    height: 80,
                   ),
                 ),
                 SizedBox(width: 10),
@@ -359,12 +384,12 @@ class _FirstPageState extends State<FirstPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Looking for a \ngood time?\ncheck our Quizz!',
+                      'Looking for a good\n time?\ncheck our Quizz!',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 11,
                       ),
                     ),
                     ElevatedButton(
@@ -378,7 +403,7 @@ class _FirstPageState extends State<FirstPage> {
                         minimumSize: Size(90, 30),
                       ),
                       child: Text(
-                        'Get Start',
+                        'Get Started',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           color: Color(0xFF199A8E),
@@ -406,7 +431,7 @@ class _FirstPageState extends State<FirstPage> {
                 ),
               ],
             ),
-            margin: EdgeInsets.symmetric(horizontal: 25),
+            margin: EdgeInsets.symmetric(horizontal: 40),
             padding: EdgeInsets.all(20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -414,9 +439,9 @@ class _FirstPageState extends State<FirstPage> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(30),
                   child: Image.asset(
-                    'assets/logomob.png',
-                    width:87,
-                    height: 87,
+                    'assets/mylogo.png',
+                    width:80,
+                    height: 80,
                   ),
                 ),
                 SizedBox(width: 10),
@@ -466,5 +491,16 @@ class _FirstPageState extends State<FirstPage> {
 
   Widget _buildHistoryPage() {
     return HistoryPage(patientId: widget.patientId);
+  }
+
+  Widget _buildRecommendationPage() {
+    return RecommendationResultPage(
+      recommendation: widget.pythonOutput,
+      age: widget.age,
+      gender: widget.gender,
+      diabetesType: widget.diabetesType ?? '',
+      isSmoke: widget.isSmoke ?? '',
+      area: widget.area ?? '',
+    );
   }
 }

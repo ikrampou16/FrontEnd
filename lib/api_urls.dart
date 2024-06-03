@@ -1,5 +1,5 @@
 class ApiUrls {
-  static const String ipAddress = '192.168.1.5';
+  static const String ipAddress = '192.168.121.226';
   static const String baseUrl = 'http://$ipAddress:3000/api';
   static const String patientRegistration = '$baseUrl/patient';
   static const String loginUrl = '$baseUrl/patient/loginPatient';
@@ -24,8 +24,11 @@ class ApiUrls {
   static String deleteDkaHistoryUrl(int dkaHistoryId) => '$baseUrl/deleteDH/$dkaHistoryId';
   static String modifyPasswordUrl(int patientId) => '$baseUrl/patients/$patientId/password';
   static const String RecSys = '$baseUrl/recommendations';
-
-
-
+  static String fcmTokenUrl(int patientId) => '$baseUrl/patients/$patientId/fcmtoken';
+  static const String latestLocationUrl = '$baseUrl/LatestLocation';
+  static const String sendLocationUrl = '$baseUrl/location';
+  static const String deleteDKA = '$baseUrl/deleteDH';
+  static const String userManualPDF = '$baseUrl/user_manual.pdf';
+  static const String addRecommendation = '$baseUrl/addrecommendation';
 
 }

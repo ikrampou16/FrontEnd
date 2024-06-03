@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "959007708327",
+    "project_id": "fluttermob-33120",
+    "storage_bucket": "fluttermob-33120.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:959007708327:android:1347dd97129b1eac593782",
+        "android_client_info": {
+          "package_name": "com.example.untitled3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZJ_qek0UF4cS_sQNRBKMmueIn93Aqidg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

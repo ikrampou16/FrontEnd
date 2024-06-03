@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'api_urls.dart';
-import 'dart:convert';
+import 'status_code.dart';
 
 class HistoryPage extends StatefulWidget {
   final int? patientId;
@@ -34,7 +35,10 @@ class _HistoryPageState extends State<HistoryPage> {
       });
     });
   }
-
+  String formatDate(String date) {
+    DateTime dateTime = DateTime.parse(date);
+    return DateFormat('MMMM dd, yyyy').format(dateTime);
+  }
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -52,7 +56,7 @@ class _HistoryPageState extends State<HistoryPage> {
   Future<int?> fetchMedicalFolderId(int? patientId) async {
     try {
       final response = await http.get(Uri.parse(ApiUrls.medicalFolderUrl(patientId!)));
-      if (response.statusCode == 200) {
+      if (response.statusCode == StatusCodes.ok) {
         final jsonData = jsonDecode(response.body);
         print('JSON Data: $jsonData');
         final information = jsonData['information'];
@@ -77,8 +81,9 @@ class _HistoryPageState extends State<HistoryPage> {
       final response = await http.get(Uri.parse(ApiUrls.dkaHistoryUrl(idFolder)));
       print('DKA History Response Status Code: ${response.statusCode}');
       print('DKA History Response Body: ${response.body}');
-      if (response.statusCode == 200) {
-        final List<dynamic> dkaHistoryData = jsonDecode(response.body);
+      if (response.statusCode == StatusCodes.ok) {
+        final responseData = jsonDecode(response.body);
+        final List<dynamic> dkaHistoryData = responseData['dkaHistory'];
         return dkaHistoryData.cast<Map<String, dynamic>>();
       } else {
         throw Exception('Failed to fetch DKA history');
@@ -92,10 +97,10 @@ class _HistoryPageState extends State<HistoryPage> {
   Future<void> deleteTest(int? testId) async {
     try {
       final response = await http.delete(
-        Uri.parse('http://192.168.1.3:3000/api/deleteTest/$testId'),
+        Uri.parse('${ApiUrls.baseUrl}/deleteTest/$testId'),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == StatusCodes.ok) {
         print('Test deleted successfully');
 
         // Print additional information to verify the deletion
@@ -114,36 +119,12 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  Future<void> deleteDkaHistory(int dkaHistoryId, int? idFolder) async {
-    try {
-      final response = await http.delete(
-        Uri.parse('http://192.168.1.3:3000/api/deleteDH/$dkaHistoryId'),
-      );
 
-      if (response.statusCode == 200) {
-        print('DKA history deleted successfully');
-
-        // Ensure idFolder is not null before using it
-        if (idFolder != null) {
-          setState(() {
-            _fetchDkaHistoryFuture = fetchDkaHistory(idFolder);
-          });
-        } else {
-          print('idFolder is null');
-        }
-      } else {
-        print('Failed to delete DKA history: ${response.statusCode}');
-        print('Response body: ${response.body}');
-      }
-    } catch (error) {
-      print('Error deleting DKA history: $error');
-    }
-  }
 
   Future<List<Map<String, dynamic>>> fetchTests() async {
     try {
       final response = await http.get(Uri.parse(ApiUrls.testsUrl(widget.patientId)));
-      if (response.statusCode == 200) {
+      if (response.statusCode == StatusCodes.ok) {
         final List<dynamic> testData = jsonDecode(response.body);
 
         // Map each test data to a Map containing test details including test ID
@@ -152,7 +133,7 @@ class _HistoryPageState extends State<HistoryPage> {
             'id_test': test['id_test'],
             'state': test['state'],
             'acetoneqt': test['acetoneqt'],
-            'date': test['date'],
+            'date': test['createdAt'],
             'id_patient': test['id_patient'],
             'ref_device': test['ref_device'],
           };
@@ -178,7 +159,7 @@ class _HistoryPageState extends State<HistoryPage> {
         body: jsonEncode(<String, dynamic>{}),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == StatusCodes.ok) {
         final jsonData = jsonDecode(response.body);
         final idFolder = jsonData['id_folder'];
         return idFolder;
@@ -214,7 +195,7 @@ class _HistoryPageState extends State<HistoryPage> {
           }),
         );
 
-        if (response.statusCode == 201) {
+        if (response.statusCode == StatusCodes.created) {
           setState(() {
             _showAddDkaForm = false;
             _fetchDkaHistoryFuture = fetchDkaHistory(medicalFolderId);
@@ -235,9 +216,10 @@ class _HistoryPageState extends State<HistoryPage> {
       print('Error registering DKA history: $error');
     }
   }
+
   Widget _buildAddDkaForm() {
     return Container(
-      color:Colors.teal[50],
+      color: Colors.teal[50],
       padding: EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -340,8 +322,15 @@ class _HistoryPageState extends State<HistoryPage> {
                 _fetchDkaHistoryFuture = fetchDkaHistory(idFolder);
               });
             },
-            child: Text('Register',style: TextStyle(fontFamily: 'Poppins',color: Colors.black, fontWeight: FontWeight.bold, fontSize:15
-            ),),
+            child: Text(
+              'Register',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
           ),
         ],
       ),
@@ -378,12 +367,15 @@ class _HistoryPageState extends State<HistoryPage> {
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:Colors.white,
+                    backgroundColor: Colors.white,
                   ),
-                  child: Text('Test History',
+                  child: Text(
+                    'Test History',
                     style: TextStyle(
-                        color:Colors.black,fontFamily: 'Poppins'
-                    ),),
+                      color: Colors.black,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -392,11 +384,15 @@ class _HistoryPageState extends State<HistoryPage> {
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:Color(0xFFB0EFE9),
+                    backgroundColor: Color(0xFFB0EFE9),
                   ),
-                  child: Text('DKA History', style: TextStyle(
-                    color:Colors.black,fontFamily: 'Poppins'
-                  ),),
+                  child: Text(
+                    'DKA History',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -440,7 +436,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           deleteTest(testId);
                         },
                         child: Container(
-                          margin: EdgeInsets.symmetric(horizontal:20 ,vertical: 10),
+                          margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                           padding: EdgeInsets.all(15),
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -449,50 +445,66 @@ class _HistoryPageState extends State<HistoryPage> {
                               width: 2,
                             ),
                             borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.5),
+                                spreadRadius: 2,
+                                blurRadius: 5,
+                                offset: Offset(0, 3), // changes position of shadow
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Date: $formattedDate',
+                                'Status: ${item['state']}',
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'Poppins',
+                                  color: item['state'] == 'Good'
+                                      ? Colors.green
+                                      : item['state'] == 'Moderate'
+                                      ? Colors.orange
+                                      : Colors.red,
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'Acetone Level: ${item['acetoneqt']} ppm',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Poppins',
+                                  color: Colors.black,
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'Date: $formattedDate',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Poppins',
+                                  color: Colors.black,
                                 ),
                               ),
                               SizedBox(height: 10),
                               Text(
                                 'Time: $formattedTime',
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'Poppins',
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              Text(
-                                'State: ${item['state']}',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              Text(
-                                'Ketone Level: ${item['acetoneqt']} ppm',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Poppins',
+                                  color: Colors.black,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       );
-                    },
+                      },
                   );
                 } else {
                   return Center(child: CircularProgressIndicator());
@@ -510,8 +522,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 : FutureBuilder<List<Map<String, dynamic>>>(
               future: _fetchDkaHistoryFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -525,67 +536,58 @@ class _HistoryPageState extends State<HistoryPage> {
                     itemBuilder: (context, index) {
                       final item = historyData[index];
                       final formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.parse(item['date']));
-                      final formattedTime = DateFormat('HH:mm:ss').format(DateTime.parse(item['date']));
-                      return Dismissible(
-                        key: Key('$index'),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: AlignmentDirectional.centerEnd,
-                          color: Colors.red,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.0),
-                            child: Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
+                      return Container(
+                        margin: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                        padding: EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(
+                            color: Color(0xFF199A8E),
+                            width: 2,
                           ),
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.5),
+                              spreadRadius: 2,
+                              blurRadius: 5,
+                              offset: Offset(0, 3), // changes position of shadow
+                            ),
+                          ],
                         ),
-                        onDismissed: (direction) {
-                          deleteDkaHistory(item['id'], idFolder);
-                        },
-                        child: Container(
-                          margin: EdgeInsets.symmetric(horizontal:20 ,vertical: 20),
-                          padding: EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(
-                              color: Color(0xFF199A8E),
-                              width: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Order: ${item['order']}',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins',
+                                color: Color(0xFF199A8E),
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Order: ${item['order']}',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Poppins',
-                                ),
+                            SizedBox(height: 10),
+                            Text(
+                              'Date: $formattedDate',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins',
+                                color: Colors.black,
                               ),
-                              SizedBox(height: 10),
-                              Text(
-                                'Date: $formattedDate',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Poppins',
-                                ),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              'Ketone Level: ${item['acetoneqt']} ppm',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins',
+                                color: Colors.black,
                               ),
-
-                              SizedBox(height: 10),
-                              Text(
-                                'Ketone Level: ${item['acetoneqt']} ppm',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -604,7 +606,7 @@ class _HistoryPageState extends State<HistoryPage> {
             _showAddDkaForm = !_showAddDkaForm;
           });
         },
-        child: Icon(_showAddDkaForm ? Icons.close : Icons.add),
+        child: Icon(_showAddDkaForm ? Icons.close : Icons.add ),
       )
           : null,
     );

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:untitled3/WelcomeScreen.dart';
 import 'dart:convert';
 import 'api_urls.dart';
 import 'MedicalFolderRegistrationScreen.dart';
 import 'loginScreen.dart';
 import 'package:flutter/services.dart';
-
+import 'status_code.dart';
 
 
 enum Gender { Female, Male }
@@ -31,7 +32,7 @@ class _PersonalInformationRegistrationScreenState
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-
+  bool _acceptedTerms = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -96,7 +97,7 @@ class _PersonalInformationRegistrationScreenState
           }),
         );
 
-        if (responsePatient.statusCode == 200) {
+        if (responsePatient.statusCode == StatusCodes.ok) {
           _clearTextControllers();
 
           _showSuccessDialog(context, responsePatient);
@@ -168,6 +169,77 @@ class _PersonalInformationRegistrationScreenState
     );
   }
 
+  void _showConsentDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false, // Block back button
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text("Terms of Use"),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "We require your permission to securely store and utilize your information to enhance your experience and provide personalized services.",
+                      style: TextStyle(fontFamily: "Poppins"),
+                    ),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _acceptedTerms,
+                          onChanged: (value) {
+                            setState(() {
+                              _acceptedTerms = value!;
+                            });
+                          },
+                        ),
+                        Text("I accept the terms"),
+                      ],
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WelcomeScreen(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Decline',
+                      style: TextStyle(color: Color(0xFF199A8E)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _acceptedTerms
+                        ? () {
+                      Navigator.pop(context); // Close dialog
+                    }
+                        : null,
+                    child: Text(
+                      'Accept',
+                      style: TextStyle(
+                        color: _acceptedTerms ? Color(0xFF199A8E) : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -178,393 +250,340 @@ class _PersonalInformationRegistrationScreenState
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance!.addPostFrameCallback((_) {
+      _showConsentDialog();
+    });
+  }
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Personal Information'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
       body: SingleChildScrollView(
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.white, // Start color
-                Color(0xFFB0EFE9), // End color
-              ],
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWelcomeMessage(),
+              SizedBox(height: 16),
+              _buildFormFields(context),
+              SizedBox(height: 16),
+              _buildSignUpButton(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeMessage() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Welcome!',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 16),
+        Text(
+          'Please fill in your details below:',
+          style: TextStyle(fontSize: 16),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFormFields(BuildContext context) {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _firstNameController,
+          decoration: InputDecoration(labelText: 'First Name',
+            prefixIcon: Icon(Icons.person_outline, color: Color(0xFF199A8E)),
+          ),
+
+          validator: (value) {
+            if (value!.isEmpty) {
+              return 'Please enter your first name';
+            }
+            return null;
+          },
+        ),
+        TextFormField(
+          controller: _lastNameController,
+          validator: (value) {
+            if (value!.isEmpty) {
+              return 'Please enter your last name';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.person_outline, color: Color(0xFF199A8E)),
+            labelText: 'Last Name',
+            labelStyle: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.black,
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
             ),
           ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: MediaQuery.of(context).size.height * 0.04,
-                    horizontal: MediaQuery.of(context).size.width * 0.04,
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            icon: Icon(Icons.arrow_back),
-                          ),
-                          Text(
-                            'Welcome !',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize:
-                              MediaQuery.of(context).size.width * 0.07,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(
-                              width:
-                              MediaQuery.of(context).size.width * 0.12),
-                        ],
-                      ),
-                      SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.01),
-                      Text(
-                        'We are very excited to have you join',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize:
-                          MediaQuery.of(context).size.width * 0.04,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.01),
-                      Text(
-                        'The family',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize:
-                          MediaQuery.of(context).size.width * 0.04,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    color: Colors.white,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(
-                      MediaQuery.of(context).size.width * 0.05,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextFormField(
-                          controller: _firstNameController,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please enter your first name';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.person_outline,
-                                color: Color(0xFF199A8E)),
-                            labelText: 'First name',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _lastNameController,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please enter your last name';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.person_outline,
-                                color: Color(0xFF199A8E)),
-                            labelText: 'Last Name',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _birthController,
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.person_outline, color: Color(0xFF199A8E)),
-                            labelText: 'Date Of Birth',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                            suffixIcon: GestureDetector(
-                              onTap: () {
-                                _selectDate(context);
-                              },
-                              child: Icon(Icons.calendar_today, color: Color(0xFF199A8E)),
-                            ),
-                          ),
-                          readOnly: true,
-                          onTap: () {
-                            _selectDate(context);
-                          },
-                        ),
-                        DropdownButtonFormField<Gender>(
-                          value: _selectedGender,
-                          onChanged: (Gender? newValue) {
-                            setState(() {
-                              _selectedGender = newValue!;
-                            });
-                          },
-                          items: [
-                            DropdownMenuItem<Gender>(
-                              value: Gender.Female,
-                              child: Text('Female'),
-                            ),
-                            DropdownMenuItem<Gender>(
-                              value: Gender.Male,
-                              child: Text('Male'),
-                            ),
-                          ],
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.male,
-                                color: Color(0xFF199A8E)),
-                            labelText: 'Gender',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _addressController,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please enter your address';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.location_on_outlined,
-                                color: Color(0xFF199A8E)),
-                            labelText: 'Address',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please enter your phone number';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.phone_outlined,
-                                color: Color(0xFF199A8E)),
-                            labelText: 'Phone number',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _emailController,
+        ),
+        TextFormField(
+          controller: _birthController,
+          validator: (value) {
+            if (value!.isEmpty) {
+              return 'Please enter your date of birth';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.calendar_month_outlined, color: Color(0xFF199A8E)),
+            labelText: 'Date Of Birth',
+            labelStyle: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.black,
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
+            ),
+            suffixIcon: GestureDetector(
+              onTap: () {
+                _selectDate(context);
+              },
+              child: Icon(Icons.calendar_month_outlined, color: Color(0xFF199A8E)),
+            ),
+          ),
+          readOnly: true,
+          onTap: () {
+            _selectDate(context);
+          },
+        ),
+        DropdownButtonFormField<Gender>(
 
-                          keyboardType: TextInputType.emailAddress,
-                          validator: _validateEmail,
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.email_outlined,
-                                color: Color(0xFF199A8E)),
-                            labelText: 'Email',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please enter your password';
-                            }
-                            if (value.length < 7) {
-                              return 'Password must be at least 7 characters long';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.lock_outline,
-                                color: Color(0xFF199A8E)),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color:Color(0xFF199A8E),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                            labelText: 'Password',
-                            labelStyle: TextStyle(
-                              color: Colors.black,
-                              fontFamily: 'Poppins',
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please confirm your password';
-                            }
-                            if (value != _passwordController.text) {
-                              return 'Passwords do not match';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.lock_outline,
-                                color: Color(0xFF199A8E)),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureConfirmPassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: Color(0xFF199A8E),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscureConfirmPassword =
-                                  !_obscureConfirmPassword;
-                                });
-                              },
-                            ),
-                            labelText: 'Confirm Password',
-                            labelStyle: TextStyle(
-                              fontFamily: 'Poppins',
-                              color: Colors.black,
-                            ),
-                            focusedBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0xFF199A8E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.03),
-                        Container(
-                          color: Colors.white,
-                          child: SizedBox(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                _registerPersonalInformation(context);
-                              },
-                              child: Text(
-                                'Sign Up',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold,
-                                  fontSize:
-                                  MediaQuery.of(context).size.width *
-                                      0.06,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(
-                                    vertical:
-                                    MediaQuery.of(context).size.height *
-                                        0.02),
-                                minimumSize: Size(
-                                    MediaQuery.of(context).size.width * 0.3,
-                                    0),
-                                backgroundColor: Color(0xFF199A8E),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+          value: _selectedGender,
+          onChanged: (Gender? newValue) {
+            setState(() {
+              _selectedGender = newValue!;
+            });
+          },
+          validator: (value) {
+            if (value == null) {
+              return 'Please select your gender';
+            }
+            return null;
+          },
+          items: [
+            DropdownMenuItem<Gender>(
+              value: Gender.Female,
+              child: Text('Female'),
+            ),
+            DropdownMenuItem<Gender>(
+              value: Gender.Male,
+              child: Text('Male'),
+            ),
+          ],
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.male, color: Color(0xFF199A8E)),
+            labelText: 'Gender',
+            labelStyle: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.black,
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: _addressController,
+          validator: (value) {
+            if (value!.isEmpty) {
+              return 'Please enter your address';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.location_on_outlined, color: Color(0xFF199A8E)),
+            labelText: 'Address',
+            labelStyle: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.black,
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          validator: (value) {
+            if (value!.isEmpty) {
+              return 'Please enter your phone number';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.phone_outlined, color: Color(0xFF199A8E)),
+            labelText: 'Phone number',
+            labelStyle: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.black,
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          validator: _validateEmail,
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF199A8E)),
+            labelText: 'Email',
+            labelStyle: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.black,
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          validator: (value) {
+            if (value!.isEmpty) {
+              return 'Please enter your password';
+            }
+            if (value.length < 7) {
+              return 'Password must be at least 7 characters long';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.lock_outline, color: Color(0xFF199A8E)),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: Color(0xFF199A8E),
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
+            labelText: 'Password',
+            labelStyle: TextStyle(
+              color: Colors.black,
+              fontFamily: 'Poppins',
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: _confirmPasswordController,
+          obscureText: _obscureConfirmPassword,
+          validator: (value) {
+            if (value!.isEmpty) {
+              return 'Please confirm your password';
+            }
+            if (value != _passwordController.text) {
+              return 'Passwords do not match';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: Icon(Icons.lock_outline, color: Color(0xFF199A8E)),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureConfirmPassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: Color(0xFF199A8E),
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscureConfirmPassword = !_obscureConfirmPassword;
+                });
+              },
+            ),
+            labelText: 'Confirm Password',
+            labelStyle: TextStyle(
+              fontFamily: 'Poppins',
+              color: Colors.black,
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF199A8E),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Widget _buildSignUpButton(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () {
+            _registerPersonalInformation(context);
+          },
+          child: Text(
+            'Sign Up',
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Color(0xFF199A8E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
             ),
           ),
         ),

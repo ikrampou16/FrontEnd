@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +7,8 @@ import 'PasswordRecoveryScreen.dart';
 import 'PersonalInformationRegistrationScreen.dart';
 import 'FirstPage.dart';
 import 'api_urls.dart';
+import 'firebase.dart';
+import 'status_code.dart';
 
 class loginScreen extends StatefulWidget {
   const loginScreen({Key? key}) : super(key: key);
@@ -53,17 +56,44 @@ class _loginScreenState extends State<loginScreen> {
           }),
         );
 
-        if (response.statusCode == 200) {
+        if (response.statusCode == StatusCodes.ok) {
           final prefs = await SharedPreferences.getInstance();
           prefs.setBool('isLoggedIn', true);
+
+          // Store the token in SharedPreferences
           final responseData = jsonDecode(response.body);
           final token = responseData['token'];
+          prefs.setString('token', token); // Store the token
 
           print('Received token: $token');
+          final pythonOutput = responseData['pythonOutput'];
+
+          final age = responseData['data']['age'];
+          final gender = responseData['data']['gender'];
+          final diabetesType = responseData['data']['diabetesType'];
+          final isSmoke = responseData['data']['is_smoke'];
+          final area = responseData['data']['area'];
+
+          prefs.setString('pythonOutput', pythonOutput);
+          prefs.setInt('age', age);
+          prefs.setString('gender', gender);
+          prefs.setString('diabetesType', diabetesType);
+          prefs.setString('isSmoke', isSmoke);
+          prefs.setString('area', area);
 
           final decodedToken = jsonDecode(utf8.decode(base64.decode(base64.normalize(token.split('.')[1]))));
           final patientId = decodedToken['id'];
           print('Patient ID: $patientId');
+          // Update FCM token on the server
+          String? fcmToken = await FirebaseMessaging.instance.getToken();
+          print('FCM Token: $fcmToken');
+
+          // Update FCM token on the server
+          if (fcmToken != null) {
+            await updateFCMToken(patientId.toString(), fcmToken);
+          } else {
+            print('FCM token is null. Cannot update FCM token.');
+          }
 
           // Fetch user information to get the first name
           final userResponse = await http.get(
@@ -74,51 +104,28 @@ class _loginScreenState extends State<loginScreen> {
             },
           );
 
-          if (response.statusCode == 200) {
-            final responseData = jsonDecode(response.body);
-            final token = responseData['token'];
-            print('Received token: $token');
+          if (userResponse.statusCode == StatusCodes.ok) {
+            final userData = jsonDecode(userResponse.body);
+            final firstName = userData['first_name'];
+            prefs.setInt('patientId', patientId);
+            print('Patient ID stored in SharedPreferences: $patientId');
 
-            final decodedToken = jsonDecode(utf8.decode(base64.decode(base64.normalize(token.split('.')[1]))));
-            final patientId = decodedToken['id'];
-            print('Patient ID: $patientId');
-
-            // Store token in SharedPreferences
-            final prefs = await SharedPreferences.getInstance();
-            prefs.setBool('isLoggedIn', true);
-            prefs.setString('token', token); // Store the received token
-            print('Token stored in SharedPreferences: $token');
-
-            // Fetch user information to get the first name
-            final userResponse = await http.get(
-              Uri.parse('${ApiUrls.userDetailsUrl}/$patientId'),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer $token',
-              },
+            final storedPatientId = prefs.getInt('patientId');
+            print('Patient ID retrieved from SharedPreferences: $storedPatientId');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FirstPage(firstName: firstName, patientId: patientId, pythonOutput: pythonOutput,age: age,
+                  gender: gender,
+                  diabetesType: diabetesType,
+                  isSmoke: isSmoke,
+                  area: area,),
+              ),
             );
-
-            if (userResponse.statusCode == 200) {
-              final userData = jsonDecode(userResponse.body);
-              final firstName = userData['first_name'];
-              final prefs = await SharedPreferences.getInstance();
-              prefs.setInt('patientId', patientId);
-              print('Patient ID stored in SharedPreferences: $patientId');
-
-              final storedPatientId = prefs.getInt('patientId');
-              print('Patient ID retrieved from SharedPreferences: $storedPatientId');
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FirstPage(firstName: firstName, patientId: patientId),
-                ),
-              );
-            } else {
-              print('Failed to fetch user information: ${userResponse.statusCode}');
-            }
+          } else {
+            print('Failed to fetch user information: ${userResponse.statusCode}');
           }
-        } else if (response.statusCode == 401) {
+        } else if (response.statusCode == StatusCodes.unauthorized) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Incorrect email or password. Please try again.'),
@@ -147,6 +154,7 @@ class _loginScreenState extends State<loginScreen> {
       });
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,7 +188,7 @@ class _loginScreenState extends State<loginScreen> {
                   ),
                   SizedBox(height: 5),
                   Image.asset(
-                    'assets/login.png',
+                    'assets/4.png',
                     width: MediaQuery.of(context).size.width * 0.2,
                     height: MediaQuery.of(context).size.width * 0.4,
                     fit: BoxFit.contain,
@@ -206,7 +214,7 @@ class _loginScreenState extends State<loginScreen> {
                           },
                           validator: _validateEmail,
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.email, color: Color(0xFF199A8E)),
+                            prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF199A8E)),
                             labelText: 'Username or Email',
                             labelStyle: TextStyle(
                               fontFamily: 'Poppins',
@@ -234,7 +242,7 @@ class _loginScreenState extends State<loginScreen> {
                             return null;
                           },
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.lock, color: Color(0xFF199A8E)),
+                            prefixIcon: Icon(Icons.lock_outline, color: Color(0xFF199A8E)),
                             labelText: 'Password',
                             labelStyle: TextStyle(
                               fontFamily: 'Poppins',
@@ -247,7 +255,7 @@ class _loginScreenState extends State<loginScreen> {
                                 });
                               },
                               icon: Icon(
-                                _obscureText ? Icons.visibility_off : Icons.visibility,
+                                _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                                 color: Color(0xFF199A8E),
                               ),
                             ),
