@@ -49,7 +49,6 @@ class _FirstPageState extends State<FirstPage> {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
     _cacheData();
-
   }
 
   @override
@@ -64,7 +63,6 @@ class _FirstPageState extends State<FirstPage> {
     await prefs.setInt('patientId', widget.patientId ?? 0);
     await prefs.setString('pythonOutput', widget.pythonOutput);
   }
-
   Future<void> _showLogoutConfirmationDialog() async {
     return showDialog<void>(
       context: context,

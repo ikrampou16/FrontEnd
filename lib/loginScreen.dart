@@ -63,11 +63,12 @@ class _loginScreenState extends State<loginScreen> {
           // Store the token in SharedPreferences
           final responseData = jsonDecode(response.body);
           final token = responseData['token'];
+          final pythonOutput = responseData['pythonOutput']; // Extract pythonOutput
           prefs.setString('token', token); // Store the token
+          prefs.setString('pythonOutput', pythonOutput); // Store the pythonOutput
 
           print('Received token: $token');
-          final pythonOutput = responseData['pythonOutput'];
-
+          print('Received pythonOutput: $pythonOutput');
           final age = responseData['data']['age'];
           final gender = responseData['data']['gender'];
           final diabetesType = responseData['data']['diabetesType'];
@@ -80,6 +81,7 @@ class _loginScreenState extends State<loginScreen> {
           prefs.setString('diabetesType', diabetesType);
           prefs.setString('isSmoke', isSmoke);
           prefs.setString('area', area);
+
 
           final decodedToken = jsonDecode(utf8.decode(base64.decode(base64.normalize(token.split('.')[1]))));
           final patientId = decodedToken['id'];
@@ -119,7 +121,8 @@ class _loginScreenState extends State<loginScreen> {
                   gender: gender,
                   diabetesType: diabetesType,
                   isSmoke: isSmoke,
-                  area: area,),
+                  area: area,
+                ),
               ),
             );
           } else {

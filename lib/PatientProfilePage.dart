@@ -246,9 +246,6 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
   Widget _buildProfileField(String label, String value, IconData iconData, bool isMedicalField) {
     bool isBMIField = label == 'BMI';
 
-    // Regular expression for validating a phone number starting with '0'
-    RegExp phoneNumberRegex = RegExp(r'^0\d{9}$');
-
     // Function to check if the provided value is a valid phone number
     bool isValidPhoneNumber(String phoneNumber) {
       if (phoneNumber.startsWith('0') && phoneNumber.length == 10) {
@@ -260,8 +257,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
 
     // Display the phone number with leading '0' if it starts with '0'
     String displayedPhoneNumber = value;
-   if (label == 'Phone Number' && value.isNotEmpty && value[0] == '0') {
-     displayedPhoneNumber = '$value';
+    if (label == 'Phone Number' && value.isNotEmpty && value[0] == '0') {
+      displayedPhoneNumber = '$value';
     }
 
     return Column(
@@ -300,10 +297,6 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
         ),
         SizedBox(height: 5),
         TextField(
-          keyboardType: TextInputType.number, // Ensure only numbers are allowed
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.digitsOnly // Allow only digits
-          ],
           readOnly: true,
           decoration: InputDecoration(
             hintText: displayedPhoneNumber, // Display the formatted phone number
@@ -311,6 +304,8 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
             contentPadding: EdgeInsets.all(0),
           ),
           style: TextStyle(fontSize: 17, fontFamily: "Poppins"),
+          keyboardType: label == 'Phone Number'? TextInputType.number : TextInputType.text, // Restrict to numbers for phone number field
+          inputFormatters: label == 'Phone Number'? [FilteringTextInputFormatter.digitsOnly] : null, // Allow only digits for phone number
         ),
         // Display error message if the phone number format is invalid
         if (label == 'Phone Number' && value.isNotEmpty && !isValidPhoneNumber(value))
@@ -322,7 +317,6 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
       ],
     );
   }
-
   Future<Map<String, dynamic>> _fetchProfileData(int patientId) async {
     try {
       final profileResponse = await http.get(

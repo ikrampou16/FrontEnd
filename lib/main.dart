@@ -9,7 +9,6 @@ import 'SplashScreen.dart';
 import 'FirstPage.dart';
 import 'firebase.dart';
 import 'loginScreen.dart';
-import 'introScreen.dart';
 import 'CachHelper.dart';
 import 'dart:convert';
 import 'api_urls.dart';
@@ -39,26 +38,30 @@ void main() async {
   // Fetch and send location
   await _fetchAndSendLocation();
   initializeNotifications();
+  await requestNotificationPermissionIfNeeded(); // Request notification permission
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
   ));
 
   final prefs = await SharedPreferences.getInstance();
+  final recommendation = prefs.getString('recommendation') ?? '';
   final token = prefs.getString('token');
   final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
   final firstName = prefs.getString('firstName');
   final patientId = prefs.getInt('patientId');
-  final pythonOutput = '';
+  final pythonOutput = prefs.getString('pythonOutput') ?? '';
   final age = prefs.getInt('age') ?? 0;
   final gender = prefs.getString('gender') ?? '';
   final diabetesType = prefs.getString('diabetesType') ?? '';
   final area = prefs.getString('area') ?? '';
   final isSmoke = prefs.getString('isSmoke') ?? '';
+
   String? fcmToken = await FirebaseMessaging.instance.getToken();
   if (fcmToken != null) {
     await updateFCMToken(patientId.toString(), fcmToken);
   }
+
 
   runApp(MyApp(
     isLoggedIn: isLoggedIn,
@@ -102,6 +105,7 @@ Future<void> _sendMobileLocationToServer(double latitude, double longitude) asyn
     print('Failed to send mobile location, status code: ${response.statusCode}');
   }
 }
+
 Future<void> requestNotificationPermissionIfNeeded() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   bool? notificationPermissionRequested = prefs.getBool('notificationPermissionRequested');
@@ -141,11 +145,20 @@ class MyApp extends StatelessWidget {
   final String? area;
   final String? isSmoke;
 
-  const MyApp({Key? key, this.isLoggedIn, this.firstName, this.patientId, this.token,this.pythonOutput, this.age,
-     this.gender,
-     this.diabetesType,
-     this.area,
-     this.isSmoke,}) : super(key: key);
+  const MyApp({
+    Key? key,
+    this.isLoggedIn,
+    this.firstName,
+    this.patientId,
+    this.token,
+    this.pythonOutput,
+    this.age,
+    this.gender,
+    this.diabetesType,
+    this.area,
+    this.isSmoke,
+  }) : super(key: key);
+
 
   @override
   Widget build(BuildContext context) {
@@ -156,14 +169,31 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Poppins',
         useMaterial3: true,
       ),
-      home: Stack(
-        children: [
-          (token != null) ? FirstPage(firstName: firstName!, patientId: patientId!,pythonOutput: pythonOutput!, age: age!,
-            gender: gender!,
-            diabetesType: diabetesType,
-            area: area,
-            isSmoke: isSmoke,) : SplashScreen(),
-        ],
+      home: Scaffold(
+        body: Stack(
+          children: [
+            (token != null &&
+                firstName != null &&
+                patientId != null &&
+                pythonOutput != null &&
+                age != null &&
+                gender != null &&
+                diabetesType != null &&
+                area != null &&
+                isSmoke != null)
+                ? FirstPage(
+              firstName: firstName!,
+              patientId: patientId!,
+              pythonOutput: pythonOutput!,
+              age: age!,
+              gender: gender!,
+              diabetesType: diabetesType,
+              area: area,
+              isSmoke: isSmoke,
+            )
+                : SplashScreen(),
+          ],
+        ),
       ),
       routes: {
         '/login': (context) => loginScreen(),

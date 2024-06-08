@@ -384,7 +384,6 @@ class _RecommendationResultPageState extends State<RecommendationResultPage> {
   }
 
   Future<void> _sendRecommendation(String category, String recommendation, double rating) async {
-    final url = '';
 
     final responseadd = await http.post(
       Uri.parse(ApiUrls.addRecommendation),
